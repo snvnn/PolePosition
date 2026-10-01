@@ -1,0 +1,17 @@
+output_dir = "reviews"
+progress_bins = 1000
+min_reference_laps = 3
+mad_multiplier = 6.0
+trajectory_floor_m = 5.0
+speed_floor_kmh = 20.0
+steering_floor = 0.35
+relative_duration_seconds = 0.2
+merge_gap_seconds = 0.3
+low_speed_kmh = 20.0
+low_speed_seconds = 2.0
+window_seconds = 0.1
+window_tolerance_seconds = 0.03
+reverse_progress = 0.002
+displacement_speed_multiplier = 2.0
+displacement_margin_m = 5.0
+context_seconds = 3.0

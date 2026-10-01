@@ -1,0 +1,16 @@
+/target/
+/recordings/
+/datasets/
+/reviews/
+/track_models/
+/state_runs/
+/actuator_runs/
+/baseline_runs/
+/input_profiles/
+__pycache__/
+*.pyc
+/.venv-training/
+/training_runs/
+/training_datasets/
+/trained_models/
+/evaluation_runs/

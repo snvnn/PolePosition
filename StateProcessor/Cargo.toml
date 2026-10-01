@@ -1,0 +1,14 @@
+[package]
+name = "poleposition-state"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+poleposition-telemetry = { path = "../TelemetryDataServer" }
+poleposition-recorder = { path = "../DrivingRecorder" }
+serde.workspace = true
+serde_json.workspace = true
+csv.workspace = true
+toml.workspace = true
+ctrlc.workspace = true
+sha2 = "=0.10.9"

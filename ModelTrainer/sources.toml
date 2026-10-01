@@ -1,0 +1,15 @@
+schema_version = 1
+prepared = "state_runs/prepared-1790679300781499500-3e604d8c"
+train = ["actuator_runs/demo-1790827045494771000-17632", "actuator_runs/demo-1790830606855790900-16496"]
+validation = ["actuator_runs/demo-1790830785710827500-10312"]
+test = ["actuator_runs/demo-1790831109761242900-5124"]
+# Assigned before collection. Fill each path only after a verified teacher run.
+[[planned_runs]]
+id = "teacher-01"
+split = "train"
+[[planned_runs]]
+id = "teacher-02"
+split = "validation"
+[[planned_runs]]
+id = "teacher-03"
+split = "test"

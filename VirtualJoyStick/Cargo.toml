@@ -1,0 +1,9 @@
+[package]
+name = "poleposition-vjoy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "=0.10.9"

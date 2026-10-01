@@ -1,0 +1,9 @@
+output_dir = "track_models"
+spacing_m = 1.0
+smoothing_window = 11
+tangent_span = 5
+max_closure_m = 5.0
+max_smoothing_displacement_m = 0.5
+max_length_change_ratio = 0.005
+max_spacing_error_ratio = 0.01
+max_tangent_step_degrees = 10.0

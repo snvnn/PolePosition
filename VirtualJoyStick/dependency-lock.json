@@ -1,0 +1,29 @@
+{
+  "release": "BrunnerInnovation/vJoy v2.2.2.0",
+  "release_url": "https://github.com/BrunnerInnovation/vJoy/releases/tag/v2.2.2.0",
+  "installer": {
+    "url": "https://github.com/BrunnerInnovation/vJoy/releases/download/v2.2.2.0/vJoySetup_v2.2.2.0_Win10_Win11.exe",
+    "sha256": "ef569a3105cd301b89580f18f60c66b339e95296acf2c0dfcaf4b4bbf8ab68fe",
+    "signature_status_observed": "Valid",
+    "signer_observed": "Brunner Elektronik AG",
+    "verified_on": "2026-09-29"
+  },
+  "sdk": {
+    "url": "https://github.com/BrunnerInnovation/vJoy/releases/download/v2.2.2.0/SDK.zip",
+    "sha256": "0e796b185b66819d5fbeae645f3f038ecbfbbde837d3d3f06cba82ae1db07c67",
+    "x64_dll_sha256": "199316aaefac95118e869c07e7f332ce492dd9a8b6dac5a3ca20b1d5bb5058a1",
+    "dll_file_resource_version_observed": "0.0.0",
+    "api_version_required_hex": "0x0222",
+    "note": "SDK archive release/hash and DriverMatch establish version; DLL resource 0.0.0 is not the API version."
+  },
+  "abi": {
+    "header": "https://github.com/BrunnerInnovation/vJoy/blob/v2.2.2.0/SDK/inc/public.h",
+    "interface": "https://github.com/BrunnerInnovation/vJoy/blob/v2.2.2.0/SDK/inc/vjoyinterface.h",
+    "joystick_api": 3,
+    "position_size_bytes": 124,
+    "position_alignment_bytes": 4,
+    "x_offset": 16,
+    "y_offset": 20,
+    "z_offset": 24
+  }
+}

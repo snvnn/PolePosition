@@ -1,0 +1,14 @@
+schema_version = 1
+seed = 42
+batch_size = 256
+max_epochs = 200
+patience = 20
+learning_rate = 0.001
+weight_decay = 0.0001
+beta = 0.1
+gradient_clip = 1.0
+sample_interval_ms = 50
+output_dir = "training_runs"
+dataset_dir = "training_datasets"
+export_dir = "trained_models"
+threads = 1

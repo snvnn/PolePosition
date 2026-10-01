@@ -1,0 +1,12 @@
+poll_hz = 100.0
+stale_seconds = 2.0
+retry_seconds = 1.0
+queue_capacity = 4096
+output_dir = "recordings"
+teleport_margin_m = 30.0
+# User-declared settings, not automatically verified game state.
+weather = "current game conditions, unchanged; see recorded rain_intensity"
+traffic = "hotlap session (user declared)"
+fuel = "current setup unchanged; hotlap finish-line reset expected"
+tyres = "current setup unchanged; hotlap finish-line reset expected"
+assists = "automatic shifting; wired Xbox gamepad; other settings unchanged"

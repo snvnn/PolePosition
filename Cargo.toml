@@ -1,0 +1,10 @@
+[workspace]
+members = ["TelemetryDataServer", "DrivingRecorder", "StateProcessor", "VirtualJoyStick", "ModelAndActuator", "BaselineController", "ModelTrainer/rust"]
+resolver = "2"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+csv = "1"
+toml = "0.8"
+ctrlc = "3"

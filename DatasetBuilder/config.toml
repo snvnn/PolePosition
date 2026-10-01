@@ -1,0 +1,5 @@
+output_dir = "datasets"
+max_gap_ms = 100.0
+train_ratio = 0.70
+validation_ratio = 0.15
+plot_buckets = 250
