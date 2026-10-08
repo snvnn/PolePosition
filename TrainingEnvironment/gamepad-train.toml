@@ -1,0 +1,6 @@
+# Fill only with new gamepad_v1 recordings, in collection order.
+recordings = ["recordings/1791297745637986800-24336-0", "recordings/1791298123507557100-2160-0", "recordings/1791298173258624200-16548-0"]
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+speed_profile = "reinforcement_runs/human-first-lap-imitation-1791019571061957400-b6d9e4ca/speed-profile.json"
+epochs = 50
+output_dir = "reinforcement_runs"

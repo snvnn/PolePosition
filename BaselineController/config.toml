@@ -5,7 +5,8 @@ lookahead_m = 8.0
 # Virtual axis / requested curvature. Sign checked against earlier crawl X-Z motion.
 # Approximate gain from small +/-0.1 axis trials; not wheel angle or steering_raw.
 steering_per_curvature_m = 7.3
-max_steering = 0.15
+# Full normalized axis range, explicitly requested for the controller stop test.
+max_steering = 1.0
 max_throttle = 0.15
 max_brake = 0.60
 speed_kp = 0.025

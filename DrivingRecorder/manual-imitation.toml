@@ -1,0 +1,11 @@
+poll_hz = 100.0
+stale_seconds = 2.0
+retry_seconds = 1.0
+queue_capacity = 4096
+output_dir = "recordings"
+teleport_margin_m = 30.0
+weather = "Not declared; use recorded rain_intensity"
+traffic = "Not declared; manual low-to-medium speed demonstration"
+fuel = "Not declared; use recorded fuel_litres"
+tyres = "Not declared"
+assists = "Manual human demonstration; input device and assists not yet declared"

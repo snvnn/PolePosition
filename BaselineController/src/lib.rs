@@ -52,7 +52,7 @@ impl Config {
             || self.max_speed_kmh > 20.
             || self.target_speed_kmh >= self.max_speed_kmh
             || self.max_age_ms > 100.
-            || self.max_steering > if self.single_lap { 0.35 } else { 0.15 }
+            || self.max_steering > 1.
             || self.max_throttle > 0.2
             || self.max_brake > 1.
             || self.duration_s > if self.single_lap { 3600. } else { 30. }
@@ -114,6 +114,11 @@ impl Observation {
         now: u64,
         starting: bool,
     ) -> std::result::Result<(), &'static str> {
+        self.check_with_speed_limit(c, now, starting, true)
+    }
+    pub fn check_with_speed_limit(
+        &self, c: &Config, now: u64, starting: bool, speed_limit: bool,
+    ) -> std::result::Result<(), &'static str> {
         if !self.ready {
             return Err("tracking_not_ready");
         }
@@ -144,7 +149,7 @@ impl Observation {
         if self.in_pit {
             return Err("pit_area");
         }
-        if self.speed_kmh > c.max_speed_kmh {
+        if speed_limit && self.speed_kmh > c.max_speed_kmh {
             return Err("speed_limit");
         }
         if self.projection_distance_m

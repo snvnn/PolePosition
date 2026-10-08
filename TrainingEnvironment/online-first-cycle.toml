@@ -1,0 +1,13 @@
+schema_version = 1
+output_dir = "reinforcement_runs"
+episodes = 1
+episode_seconds = 60
+stage = "train"
+actuator_config = "ModelAndActuator/config.toml"
+[reward]
+time = 0.1
+lateral = 0.2
+heading = 0.1
+input_change = 0.01
+finish = 10.0
+failure = -10.0

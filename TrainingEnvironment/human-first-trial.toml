@@ -1,0 +1,60 @@
+output_dir = "actuator_runs"
+profile = "input_profiles/calibration.json"
+dll = "target/vjoy-2.2.2.0/SDK/SDK/lib/x64/vJoyInterface.dll"
+device_id = 1
+poll_hz = 100.0
+max_age_ms = 100.0
+start_key = "F7"
+stop_key = "F8"
+stopped_kmh = 1.0
+stopped_seconds = 0.5
+max_speed_kmh = 20.0
+max_steering = 1.0
+max_throttle = 0.20
+steering_rate = 1.0
+throttle_rate = 0.5
+brake_rate = 2.0
+test_seconds = 35.0
+arm_wait_seconds = 600.0
+bind_seconds = 8.0
+display_hz = 2.0
+queue_capacity = 4096
+
+[baseline]
+prepared = 'C:/Users/YoonHyeon/Desktop/accad/state_runs/prepared-1790679300781499500-3e604d8c'
+[baseline.config]
+# Short, supervised demonstration. These are initial gains, not a validated car model.
+target_speed_kmh = 10.0
+target_ramp_kmh_per_s = 2.0
+lookahead_m = 8.0
+# Virtual axis / requested curvature. Sign checked against earlier crawl X-Z motion.
+# Approximate gain from small +/-0.1 axis trials; not wheel angle or steering_raw.
+steering_per_curvature_m = 7.3
+# Full normalized axis range, explicitly requested for the controller stop test.
+max_steering = 1.0
+max_throttle = 0.15
+max_brake = 0.60
+speed_kp = 0.025
+speed_ki = 0.006
+speed_kd = 0.001
+derivative_filter_s = 0.20
+integral_limit = 3.0
+speed_deadband_kmh = 0.20
+max_age_ms = 100.0
+max_speed_kmh = 20.0
+start_distance_m = 2.0
+max_distance_m = 3.0
+start_heading_deg = 15.0
+max_heading_deg = 30.0
+initial_hold_s = 1.0
+duration_s = 30.0
+max_distance_travelled_m = 100.0
+
+[reinforcement]
+unrestricted_motion = true
+unlimited_duration = true
+bundle = 'C:/Users/YoonHyeon/Desktop/accad/reinforcement_runs/human-test-bundle-1791017666981348500-19b67221'
+seconds = 5.0
+deterministic = true
+evaluation = false
+rng_state = 42

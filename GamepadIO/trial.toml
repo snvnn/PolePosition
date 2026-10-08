@@ -1,0 +1,8 @@
+profile = "input_profiles/gamepad/profile.json"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+model = "reinforcement_runs/gamepad-imitation-1791298274998489700-29029793"
+guardian_config = "ModelAndActuator/config.toml"
+controller_config = "BaselineController/config.toml"
+output_dir = "actuator_runs"
+seconds = 10
+previous_run = "actuator_runs/gamepad-1791298790474148300-7320"

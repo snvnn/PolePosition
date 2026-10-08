@@ -89,6 +89,7 @@ pub fn run(config: Config, fault: &str) -> Result<PathBuf> {
             }
             if !(fault_at.is_some() && fault == "producer-stall") {
                 producer.publish(Context {
+                    previous_applied: None,
                     path: None,
                     health: h.clone(),
                     armed_ns: guard.armed_ns,

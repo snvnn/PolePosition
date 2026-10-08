@@ -50,23 +50,35 @@ def metrics(data,predictions,baseline_u):
     return m
 
 
-def replay(run,dataset,split):
+def replay(run,dataset,split,should_stop=None,on_progress=None):
     from ModelTrainer.training import load_trained,tensors
     folder,m,norm,model=load_trained(run);dataset,dm=load_artifact(dataset,'teacher_dataset')
     if str(dataset)!=m['dataset']:raise ValueError('Training/evaluation dataset mismatch')
     if split not in ['validation','test']:raise ValueError('Evaluation split must be validation/test')
     data=rows(dataset/(split+'.jsonl'));x,_,_=tensors(data,norm)
-    with torch.inference_mode():p=model(x).tolist()
     out=new_folder('evaluation_runs',split)
     meta=dict(schema_version=1,kind='policy_evaluation',complete=False,split=split,
               input_sha256=hashes([folder/'manifest.json',folder/'best.pt',dataset/'manifest.json',dataset/(split+'.jsonl')]))
     save(out/'manifest.json',meta)
     try:
+        p=[]
+        with torch.inference_mode():
+            for offset in range(0,len(x),1024):
+                if should_stop and should_stop():
+                    finish(out,meta,False,'Evaluation stopped');return out
+                p.extend(model(x[offset:offset+1024]).tolist())
+                if on_progress:on_progress(dict(phase='evaluating',samples=len(p),total_samples=len(x),result_dir=str(out)))
         result=metrics(data,p,norm['baseline_u']);save(out/'metrics.json',result)
         import csv
         with (out/'predictions.csv').open('x',encoding='utf-8',newline='') as f:
             w=csv.writer(f);w.writerow(['run_id','sequence','observation_ns','target_throttle','target_brake','predicted_throttle','predicted_brake','observed_throttle','observed_brake','grade_pct','speed_kmh'])
-            for r,u in zip(data,p):w.writerow([r['run_id'],r['sequence'],r['observation_ns'],r['throttle'],r['brake'],*pedal(u),r['throttle_observed'],r['brake_observed'],r['grade_pct'],r['speed_kmh']])
+            for r,u in zip(data,p):
+                if should_stop and should_stop():
+                    # Close the CSV before its hash is inventoried.
+                    break
+                w.writerow([r['run_id'],r['sequence'],r['observation_ns'],r['throttle'],r['brake'],*pedal(u),r['throttle_observed'],r['brake_observed'],r['grade_pct'],r['speed_kmh']])
+        if should_stop and should_stop():
+            finish(out,meta,False,'Evaluation stopped');return out
         from .report import evaluation_report
         evaluation_report(out,{split:result},'Recorded-observation predictions; not simulated vehicle response')
         verify_hashes(meta['input_sha256']);finish(out,meta)

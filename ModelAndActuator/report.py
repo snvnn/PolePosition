@@ -35,7 +35,9 @@ def read_rows(path, required):
         for key, value in row.items():
             if key=='features_json':
                 values=json.loads(value)
-                if len(values) not in (0,19) or any(not math.isfinite(v) for v in values):
+                version = row.get('feature_schema_version') or '1'
+                width = {'1':19,'2':35}.get(version)
+                if width is None or len(values) not in (0,width) or any(not math.isfinite(v) for v in values):
                     raise ValueError('Invalid policy feature vector')
                 continue
             if key in ("mode", "reason", "kind", "detail", "state_status", "state_reason", "send_success", "lap_valid", "in_pit", "abort", "complete", "control_source", "policy_reason") or not value:
@@ -76,7 +78,7 @@ def verify(run):
         sources={(r['sequence'],r['observation_ns'],r['tracking_epoch']) for r in telemetry}
         if any((r['observation_sequence'],r['observation_ns'],r['tracking_epoch']) not in sources for r in policy):
             raise ValueError('Policy observation provenance missing')
-    if (manifest.get('config') or {}).get('policy') and not (run/'policy.csv').exists():
+    if ((manifest.get('config') or {}).get('policy') or (manifest.get('config') or {}).get('v2_shadow')) and not (run/'policy.csv').exists():
         raise ValueError('Policy log missing')
     if summary.get("written") != counts:
         raise ValueError("Summary row counts disagree with files")
@@ -137,6 +139,11 @@ def report(run):
         "source_sha256": {name: digest(run / name) for name in ("commands.csv", "telemetry.csv", "events.csv", "summary.json")}}
     save_json(run / "validation.json", validation)
     panels = []
+    if (manifest.get('config') or {}).get('v2_shadow'):
+        policy=read_rows(run/'policy.csv',('now_ns','control_source','prediction_steering'))
+        panels.append('<p>새 정책 비교 주행: 실제 입력은 기존 제어기입니다. 아래 새 정책 출력은 장치에 전송하지 않았으며 학습 갱신도 하지 않았습니다.</p>')
+        panels.append(chart([('새 정책 조향',signal(policy,'prediction_steering'))], '새 정책 조향 판단', '정규화 조향'))
+        panels.append(chart([('새 정책 가속',signal(policy,'model_throttle')),('새 정책 제동',signal(policy,'model_brake'))], '새 정책 페달 판단', '정규화 입력'))
     if (manifest.get('config') or {}).get('policy'):
         policy=read_rows(run/'policy.csv',('now_ns','control_source'))
         unique=list({(r['observation_sequence'],r['tracking_epoch']):r for r in policy}.values())

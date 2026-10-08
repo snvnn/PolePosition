@@ -1,5 +1,5 @@
 [workspace]
-members = ["TelemetryDataServer", "DrivingRecorder", "StateProcessor", "VirtualJoyStick", "ModelAndActuator", "BaselineController", "ModelTrainer/rust"]
+members = ["TelemetryDataServer", "DrivingRecorder", "StateProcessor", "VirtualJoyStick", "GamepadIO", "ModelAndActuator", "BaselineController", "ModelTrainer/rust", "TrainingController/rust"]
 resolver = "2"
 
 [workspace.dependencies]

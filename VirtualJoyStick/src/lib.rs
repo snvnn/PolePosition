@@ -187,7 +187,11 @@ pub fn validate_probe(p: &Probe, require_free: bool) -> Result<()> {
     p.mapping.validate()
 }
 pub trait Device {
+    fn kind(&self) -> &'static str {"vjoy_wheel"}
+    /// None means this backend has no independent connection query.
+    fn connected(&self) -> Option<bool> {None}
     fn send(&mut self, axes: Axes) -> Result<[i32; 3]>;
+    fn neutralize(&mut self) -> Result<()> {self.send(Axes::NEUTRAL)?;Ok(())}
     /// Caller must have verified stop/game pause before neutralizing/releasing.
     fn release(&mut self) -> Result<()>;
 }
@@ -198,6 +202,8 @@ pub struct MockDevice {
     pub fail_send: bool,
 }
 impl Device for MockDevice {
+    fn kind(&self)->&'static str {"mock"}
+    fn connected(&self)->Option<bool> {Some(!self.released&&!self.fail_send)}
     fn send(&mut self, axes: Axes) -> Result<[i32; 3]> {
         if self.fail_send || self.released {
             return Err("Mock device unavailable".into());

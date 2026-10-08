@@ -1,4 +1,6 @@
 //! Causal features and a fixed, small CPU policy. No device or game access.
+pub mod features_v2;
+pub mod v2;
 use poleposition_state::model::{Model, Result, hash, json};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, path::Path};
@@ -471,3 +473,4 @@ mod tests {
         std::fs::remove_dir_all(folder).unwrap();
     }
 }
+pub mod gamepad;

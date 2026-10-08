@@ -13,7 +13,10 @@ fn main() {
 }
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.len() != 4 {
+    if args.as_slice()==["gamepad-schema"] {
+        println!("{}",serde_json::json!({"semantics":"gamepad_v1","feature_names":poleposition_policy::gamepad::names(),"action_names":["stick_x","rt","lt"]}));return Ok(());
+    }
+    if args.len() != 4 && !(args.len() == 5 && matches!(args[0].as_str(),"features-v2"|"features-gamepad")) {
         return Err("Usage: poleposition-policy features PREPARED INPUT.jsonl OUTPUT.jsonl | predict MODEL INPUT.jsonl OUTPUT.jsonl".into());
     }
     let input = BufReader::new(File::open(&args[2])?);
@@ -24,6 +27,68 @@ fn run() -> Result<()> {
             .open(&args[3])?,
     );
     match args[0].as_str() {
+        "predict-gamepad" => {
+            let n:poleposition_policy::gamepad::Network=serde_json::from_slice(&std::fs::read(&args[1])?)?;
+            n.validate()?;
+            for line in input.lines(){
+                let v:Vec<f32>=serde_json::from_str(&line?)?;
+                serde_json::to_writer(&mut output,&n.predict(&v)?)?;writeln!(output)?;
+            }
+        }
+        "predict-sac" => {
+            let network: poleposition_policy::v2::SacNetwork =
+                serde_json::from_slice(&std::fs::read(&args[1])?)?;
+            network.validate()?;
+            for line in input.lines() {
+                let row: serde_json::Value = serde_json::from_str(&line?)?;
+                let features: Vec<f32> = serde_json::from_value(row["features"].clone())?;
+                let epsilon: [f32; 2] = serde_json::from_value(row["epsilon"].clone())?;
+                serde_json::to_writer(&mut output, &network.predict(&features, epsilon)?)?;
+                writeln!(output)?;
+            }
+        }
+        "features-v2" | "features-gamepad" => {
+            use poleposition_policy::features_v2::{FeaturesV2, Input, SpeedProfile, names};
+            let p = Prepared::load(Path::new(&args[1]))?;
+            let speed: SpeedProfile =
+                serde_json::from_value(poleposition_state::model::json(Path::new(&args[4]))?)?;
+            speed.validate(&p.model)?;
+            let gamepad=args[0]=="features-gamepad";
+            let mut features = if gamepad {FeaturesV2::gamepad()} else {FeaturesV2::default()};
+            for line in input.lines() {
+                let input: Input = serde_json::from_str(&line?)?;
+                let values = features.update(&input, &p.model, &speed)?;
+                serde_json::to_writer(
+                    &mut output,
+                    &serde_json::json!({
+                        "sequence":input.frame.sequence,"tracking_epoch":input.frame.tracking_epoch,
+                        "observation_ns":input.frame.observation_ns,"feature_names":if gamepad {poleposition_policy::gamepad::names()} else {names()},"features":values
+                    }),
+                )?;
+                writeln!(output)?;
+            }
+            p.verify()?;
+        }
+        "predict-v2-candidate" => {
+            let folder = Path::new(&args[1]);
+            let m = poleposition_state::model::json(&folder.join("manifest.json"))?;
+            if m["kind"] != "sac_mean_candidate"
+                || m["complete"] != false
+                || m["eligible_for_live"] != false
+                || m["model_sha256"] != poleposition_state::model::hash(&folder.join("model.json"))?
+            {
+                return Err("Invalid v2 parity candidate".into());
+            }
+            let network: poleposition_policy::v2::Network = serde_json::from_value(
+                poleposition_state::model::json(&folder.join("model.json"))?,
+            )?;
+            network.validate()?;
+            for line in input.lines() {
+                let values: Vec<f32> = serde_json::from_str(&line?)?;
+                serde_json::to_writer(&mut output, &network.predict(&values)?)?;
+                writeln!(output)?;
+            }
+        }
         "features" => {
             let p = Prepared::load(Path::new(&args[1]))?;
             let mut f = Features::default();

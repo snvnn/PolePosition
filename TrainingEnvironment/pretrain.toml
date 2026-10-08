@@ -1,0 +1,13 @@
+# Offline initial SAC actor; these are implementation defaults, not driving validation.
+schema_version = 2
+max_epochs = 100
+patience = 10
+batch_size = 256
+learning_rate = 0.0003
+seed = 42
+threads = 1
+output_dir = "reinforcement_runs"
+gamma = 0.99
+tau = 0.005
+ent_coef = "auto"
+target_entropy = "auto"

@@ -6,6 +6,11 @@ import math
 from pathlib import Path
 import time
 
+if __package__:
+    from .laps import FinishLineTracker
+else:
+    from laps import FinishLineTracker
+
 REQUIRED = "sequence segment_id received_unix_ns elapsed_ns interval_ns physics_changed_ns graphics_changed_ns queue_drops physics_packet_id graphics_packet_id speed_kmh rpm gear_raw throttle brake steering_raw position_x position_y position_z heading_rad completed_laps lap_time_ms progress sector lap_valid session_type session_index in_pit fuel_litres clock_seconds rain_intensity".split()
 BOOLS = {"lap_valid", "in_pit"}
 
@@ -46,9 +51,7 @@ def validate(folder):
         count, gaps, boundaries = 0, 0, []
         seen_segments = set()
         max_gap_ns = 0
-        timer_reset = None
-        last_boundary = None
-        lap_ok = True
+        lap_tracker = FinishLineTracker()
         boundary_validity = []
         with (folder / "telemetry.csv").open(newline="", encoding="utf-8") as stream:
             reader = csv.DictReader(stream)
@@ -80,10 +83,6 @@ def validate(folder):
                     errors.append(f"Negative time/count at row {count}")
                 if any(not 0 <= r[k] <= elapsed for k in ("physics_changed_ns", "graphics_changed_ns")):
                     errors.append(f"Invalid freshness timestamp at row {count}")
-                if previous is None or seg != previous["segment_id"]:
-                    timer_reset = None
-                    last_boundary = None
-                    lap_ok = True
                 if previous is None:
                     gaps += r["sequence"] - 1
                 else:
@@ -104,25 +103,12 @@ def validate(folder):
                             errors.append(f"Unexplained data gap at row {count}")
                         if (r["physics_packet_id"], r["graphics_packet_id"]) == (previous["physics_packet_id"], previous["graphics_packet_id"]):
                             errors.append(f"Duplicate packet pair at row {count}")
-                        delta = r["completed_laps"] - previous["completed_laps"]
-                        crossed = delta == 1 and (previous["progress"] > .8 or r["progress"] < .2)
-                        if r["lap_time_ms"] + 2000 < previous["lap_time_ms"] and delta == 0:
-                            if previous["progress"] > .8 or r["progress"] < .2:
-                                timer_reset = elapsed
-                        if timer_reset is not None:
-                            if previous["progress"] > .8 and r["progress"] < .2 and elapsed - timer_reset < 1_000_000_000:
-                                crossed = True
-                                timer_reset = None
-                            elif delta != 0 or elapsed - timer_reset >= 1_000_000_000:
-                                timer_reset = None
-                        if crossed and (last_boundary is None or elapsed - last_boundary >= 5_000_000_000):
-                            boundaries.append((seg, elapsed, r["completed_laps"]))
-                            boundary_validity.append(lap_ok)
-                            lap_ok = True
-                            last_boundary = elapsed
-                        if delta < 0 or delta > 1 or (delta == 1 and not (previous["progress"] > .8 or r["progress"] < .2)):
-                            errors.append(f"Unmarked lap discontinuity at row {count}")
-                lap_ok = lap_ok and r["lap_valid"]
+                boundary, discontinuity = lap_tracker.observe(r)
+                if boundary is not None:
+                    boundaries.append(boundary[:3])
+                    boundary_validity.append(boundary[3])
+                if discontinuity:
+                    errors.append(f"Unmarked lap discontinuity at row {count}")
                 previous = r
         received = summary["received_samples"]
         dropped = summary["dropped_samples"]

@@ -272,6 +272,8 @@ impl Sink {
             "feature_ns",
             "inference_ns",
             "model_elapsed_ns",
+            "prediction_steering",
+            "feature_schema_version",
         ])?;
         let failed = Arc::new(AtomicBool::new(false));
         let fail = failed.clone();

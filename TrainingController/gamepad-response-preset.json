@@ -1,0 +1,4 @@
+{
+  "task": "실제 패드 응답 검사",
+  "config": "GamepadIO/response-physical.toml"
+}

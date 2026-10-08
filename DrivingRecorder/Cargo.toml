@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+poleposition-gamepad = { path = "../GamepadIO" }
+poleposition-management = { path = "../TrainingController/rust" }
 poleposition-telemetry = { path = "../TelemetryDataServer" }
 serde.workspace = true
 serde_json.workspace = true

@@ -79,6 +79,7 @@ pub struct Signals {
     pub explicit_release: bool,
 }
 pub struct Guard {
+    gamepad: bool,
     pub config: Config,
     pub mode: Mode,
     pub reason: String,
@@ -100,6 +101,7 @@ pub struct Guard {
 impl Guard {
     pub fn new(config: Config) -> Self {
         Self {
+            gamepad: false,
             config,
             mode: Mode::Waiting,
             reason: String::new(),
@@ -154,6 +156,11 @@ impl Guard {
         self.command = Some(c);
         Ok(())
     }
+    /// Gamepad commands already express stick and independent trigger positions.
+    pub fn new_gamepad(mut config:Config)->Self {
+        config.max_speed_kmh=f64::MAX;
+        let mut g=Self::new(config);g.gamepad=true;g
+    }
     pub fn stop(&mut self, now: u64, reason: &str) {
         if self.mode == Mode::Finished || self.mode == Mode::Stopping {
             return;
@@ -179,7 +186,7 @@ impl Guard {
     }
     pub fn acknowledge(&mut self, now: u64, axes: Axes) {
         self.output = axes;
-        if self.mode == Mode::Stopping && axes == Axes::STOP {
+        if self.mode == Mode::Stopping && (axes == Axes::STOP || (self.gamepad && axes.throttle==0. && axes.brake==1.)) {
             self.stop_sent = true;
             if self.first_zero_sent_ns.is_none() {
                 self.first_zero_sent_ns = Some(now);
@@ -187,7 +194,7 @@ impl Guard {
         }
     }
     fn stationary(&mut self, now: u64, h: &Health) -> bool {
-        if !h.fresh(now, self.config.age_ns()) || h.speed_kmh >= self.config.stopped_kmh {
+        if !h.fresh(now, self.config.age_ns()) || if self.gamepad {h.speed_kmh > self.config.stopped_kmh} else {h.speed_kmh >= self.config.stopped_kmh} {
             self.stopped_since = None;
             return false;
         }
@@ -251,10 +258,12 @@ impl Guard {
                 Some("identity_mismatch")
             } else if !h.ready {
                 Some("tracking_lost")
-            } else if h.speed_kmh > self.config.max_speed_kmh {
+            } else if h.speed_kmh > self.config.max_speed_kmh
+                && !self.config.reinforcement.as_ref().is_some_and(|r| r.unrestricted_motion) {
                 Some("speed_limit")
             } else if now.saturating_sub(self.armed_ns.unwrap())
                 >= (self.config.test_seconds * 1e9) as u64
+                && !self.config.reinforcement.as_ref().is_some_and(|r| r.unlimited_duration)
             {
                 Some("time_limit")
             } else if self.command.as_ref().is_none_or(|c| {
@@ -303,6 +312,7 @@ impl Guard {
             return Action::Send(Axes::STOP);
         }
         let c = self.command.as_ref().unwrap();
+        if self.gamepad { return Action::Send(c.axes()); }
         let target = Axes {
             steering: c
                 .steering
@@ -318,11 +328,13 @@ impl Guard {
         let brake = ramp(self.output.brake, target.brake, self.config.brake_rate);
         // Never leak residual throttle into a brake request during rate limiting.
         let axes = Axes {
-            steering: ramp(
+            steering: if self.config.reinforcement.as_ref().is_some_and(|r| r.unrestricted_motion) {
+                target.steering
+            } else { ramp(
                 self.output.steering,
                 target.steering,
                 self.config.steering_rate,
-            ),
+            ) },
             throttle: if target.brake > 0. || brake > 0. {
                 0.
             } else {
@@ -343,6 +355,25 @@ mod tests {
     use super::*;
     fn cfg() -> Config {
         toml::from_str(include_str!("../config.toml")).unwrap()
+    }
+    #[test]
+    fn gamepad_independent_pedals_unscaled_and_emergency_stop() {
+        let mut g=Guard::new_gamepad(cfg());
+        for t in (0..=60).map(|i|i*10_000_000) {
+            let h=health(t);g.accept(cmd(t,&h),t,&h).unwrap();
+            if let Action::Send(a)=g.tick(t,&h,Signals{start:t==600_000_000,..Default::default()}){g.acknowledge(t,a);}
+        }
+        assert_eq!(g.mode,Mode::Running);
+        let t=610_000_000;let mut h=health(t);h.speed_kmh=150.;
+        let mut c=cmd(t,&h);c.steering=-1.;c.throttle=0.7;c.brake=0.8;
+        g.accept(c,t,&h).unwrap();
+        assert_eq!(g.tick(t,&h,Signals::default()),Action::Send(Axes{steering:-1.,throttle:0.7,brake:0.8}));
+        assert_eq!(g.tick(t+1,&h,Signals{stop:true,..Default::default()}),Action::Send(Axes::STOP));
+        g.acknowledge(t+2,Axes{steering:0.5,throttle:0.,brake:1.});
+        assert!(g.stop_sent);
+        let mut wheel=Guard::new(cfg());wheel.mode=Mode::Stopping;
+        wheel.acknowledge(t+2,Axes{steering:0.5,throttle:0.,brake:1.});
+        assert!(!wheel.stop_sent);
     }
     fn health(t: u64) -> Health {
         Health {
@@ -390,9 +421,49 @@ mod tests {
         g
     }
     #[test]
+    fn human_override_removes_speed_and_steering_rate_but_keeps_stop() {
+        let mut g = armed();
+        g.config.reinforcement = Some(crate::rl::Config { bundle: "test".into(), seconds: 5.,
+            deterministic: true, evaluation: false, unrestricted_motion: true, unlimited_duration: false, rng_state: 42 });
+        let t = 610_000_000;
+        let mut h = health(t); h.speed_kmh = 90.;
+        let mut c = cmd(t, &h); c.steering = 0.8;
+        g.accept(c, t, &h).unwrap();
+        let Action::Send(a) = g.tick(t, &h, Signals::default()) else { panic!("No output"); };
+        assert_eq!(g.mode, Mode::Running);
+        assert_eq!(a.steering, 0.8);
+        g.config.reinforcement.as_mut().unwrap().unlimited_duration = true;
+        g.armed_ns = Some(0);
+        g.config.test_seconds = 0.1;
+        assert!(matches!(g.tick(t, &h, Signals::default()), Action::Send(_)));
+        assert_eq!(g.mode, Mode::Running);
+        assert_eq!(g.tick(t, &h, Signals { stop: true, ..Default::default() }), Action::Send(Axes::STOP));
+    }
+    #[test]
     fn unarmed_no_output() {
         let mut g = Guard::new(cfg());
         assert_eq!(g.tick(1, &health(1), Signals::default()), Action::None);
+    }
+    #[test]
+    fn management_disconnect_uses_braking_and_cannot_rearm() {
+        let control = poleposition_management::Control::default();
+        control.listen(std::io::Cursor::new(""));
+        let mut guard = armed();
+        let now = 610_000_000;
+        guard.stop(now, control.stop_reason().unwrap());
+        assert_eq!(guard.reason, "connection_closed");
+        assert_eq!(
+            guard.tick(
+                now,
+                &health(now),
+                Signals {
+                    start: true,
+                    ..Default::default()
+                }
+            ),
+            Action::Send(Axes::STOP)
+        );
+        assert_eq!(guard.mode, Mode::Stopping);
     }
     #[test]
     fn unarmed_failure_never_applies_brake() {
@@ -652,7 +723,7 @@ mod tests {
     }
 
     #[test]
-    fn long_run_and_wider_steering_require_explicit_lap_config() {
+    fn long_run_requires_explicit_lap_config() {
         let mut c = cfg();
         c.test_seconds = 3600.;
         c.max_steering = 0.35;

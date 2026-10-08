@@ -50,6 +50,7 @@ pub fn write_json(path: &Path, value: &impl Serialize) -> io::Result<()> {
 pub enum Message {
     Row(Row),
     Event(Event),
+    Input(poleposition_gamepad::InputRow),
 }
 pub struct Sink {
     tx: SyncSender<Message>,
@@ -60,14 +61,19 @@ pub struct Sink {
 }
 impl Sink {
     pub fn start(path: &Path, capacity: usize) -> io::Result<Self> {
+        Self::start_with_inputs(path, capacity, false)
+    }
+    pub fn start_with_inputs(path: &Path, capacity: usize, gamepad: bool) -> io::Result<Self> {
         let tf = create_new(&path.join("telemetry.csv"))?;
         let ef = create_new(&path.join("events.csv"))?;
+        let inf = if gamepad { Some(create_new(&path.join("inputs.csv"))?) } else { None };
         let (tx, rx) = mpsc::sync_channel(capacity);
         let failed = Arc::new(AtomicBool::new(false));
         let flag = failed.clone();
         let handle = thread::spawn(move || {
             let result = (|| {
                 let mut data = csv::Writer::from_writer(BufWriter::new(tf));
+                let mut inputs = inf.map(|f| csv::Writer::from_writer(BufWriter::new(f)));
                 let mut events = csv::WriterBuilder::new()
                     .has_headers(false)
                     .from_writer(BufWriter::new(ef));
@@ -96,12 +102,16 @@ impl Sink {
                             events.serialize(e)?;
                             event_count += 1;
                         }
+                        Ok(Message::Input(r)) => {
+                            inputs.as_mut().ok_or_else(||io::Error::other("Input stream not enabled"))?.serialize(r)?;
+                        }
                         Err(mpsc::RecvTimeoutError::Timeout) => (),
                         Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     }
                     if last_flush.elapsed() >= Duration::from_secs(1) {
                         data.flush()?;
                         events.flush()?;
+                        if let Some(w)=&mut inputs { w.flush()?; }
                         last_flush = std::time::Instant::now();
                     }
                 }
@@ -109,6 +119,7 @@ impl Sink {
                 events.flush()?;
                 data.get_ref().get_ref().sync_all()?;
                 events.get_ref().get_ref().sync_all()?;
+                if let Some(w)=&mut inputs { w.flush()?; w.get_ref().get_ref().sync_all()?; }
                 Ok((rows, event_count))
             })();
             if result.is_err() {
@@ -131,6 +142,7 @@ impl Sink {
                 match msg {
                     Message::Row(_) => self.dropped_rows += 1,
                     Message::Event(_) => self.dropped_events += 1,
+                    Message::Input(_) => { self.dropped_rows += 1; return Err(io::Error::other("Gamepad input queue overflow")); }
                 };
                 Ok(())
             }
@@ -208,6 +220,8 @@ mod tests {
         sink.send(event()).unwrap();
         sink.send(event()).unwrap();
         assert_eq!(sink.dropped_events, 1);
+        assert!(sink.send(Message::Input(poleposition_gamepad::InputRow::new(1,1,1,2,0,Some((1,Default::default()))))).is_err());
+        assert_eq!(sink.dropped_rows,1);
         release_tx.send(()).unwrap();
         assert!(sink.finish().is_err());
     }

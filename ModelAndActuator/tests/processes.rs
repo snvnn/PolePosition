@@ -97,6 +97,7 @@ fn reply_generated_during_guardian_checks_uses_receipt_time() {
         let before_checks = now_ns();
         let h = health(before_checks, sequence);
         producer.publish(Context {
+            previous_applied: None,
             path: None,
             health: h.clone(),
             armed_ns: None,
@@ -199,6 +200,7 @@ fn suspended_producer_expires_while_guard_continues() {
         let h = health(now, seq);
         seq += 1;
         producer.publish(Context {
+            previous_applied: None,
             path: None,
             health: h.clone(),
             armed_ns: Some(now),

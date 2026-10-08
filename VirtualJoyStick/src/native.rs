@@ -162,6 +162,7 @@ impl Native {
     }
 }
 impl Device for Native {
+    fn connected(&self)->Option<bool> {Some(self.mapping.as_ref().is_some_and(|m|unsafe{(self.status)(m.device)}==0))}
     fn send(&mut self, axes: Axes) -> Result<[i32; 3]> {
         let m = self.mapping.as_ref().ok_or("Device not acquired")?;
         if unsafe { (self.status)(m.device) } != 0 {

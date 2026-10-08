@@ -10,7 +10,9 @@
 __pycache__/
 *.pyc
 /.venv-training/
+/.venv-controller/
 /training_runs/
 /training_datasets/
 /trained_models/
 /evaluation_runs/
+/reinforcement_runs/

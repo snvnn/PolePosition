@@ -1,0 +1,4 @@
+profile = "input_profiles/gamepad/profile.json"
+guardian_config = "ModelAndActuator/config.toml"
+output_dir = "actuator_runs"
+brake_held = false

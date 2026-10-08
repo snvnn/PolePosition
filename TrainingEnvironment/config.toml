@@ -1,0 +1,20 @@
+# Only values explicitly specified in Docs/TrainingControllerPlan.md.
+schema_version = 2
+policy_hz = 50
+guardian_hz = 100
+max_episodes = 10
+batch_seconds = 7200
+episode_seconds = 1800
+speed_caps_kmh = [10, 20, 40, 80, 120, 160, 200, 240]
+evaluation_laps = 3
+reset_verification_runs = 3
+hidden_layers = [128, 128]
+critics = 2
+batch_size = 256
+learning_rate = 0.0003
+replay_capacity = 200000
+seed = 42
+new_samples_per_update = 4
+max_episode_updates = 2000
+# Reward weights, new feature schema, reset recognition thresholds and high-speed
+# actuator limits are unresolved; this file alone cannot enable live RL.

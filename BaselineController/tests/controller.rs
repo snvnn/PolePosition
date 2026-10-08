@@ -166,12 +166,17 @@ fn overspeed_pid_brakes_without_throttle() {
 #[test]
 fn steering_envelope_is_not_hidden() {
     let (mut c, _) = running(false);
+    c.config.max_steering = 0.15;
     let mut o = observation(&c.model, 201);
     o.heading_rad += 0.2;
     let out = c.update(Some(&o), o.observation_ns, Some(1_000_000_000));
     assert_eq!(out.reason, "steering_envelope");
     assert!(out.abort);
     assert_eq!(out.throttle, 0.);
+    let (mut full, _) = running(false);
+    let out = full.update(Some(&o), o.observation_ns, Some(1_000_000_000));
+    assert!(!out.abort);
+    assert!(out.steering.abs() > 0.15 && out.steering.abs() <= 1.);
 }
 #[test]
 fn limits_and_completions() {
@@ -191,7 +196,9 @@ fn limits_and_completions() {
     bad.target_speed_kmh = f64::NAN;
     assert!(bad.validate().is_err());
     bad = config();
-    bad.max_steering = 0.2;
+    bad.max_steering = 1.;
+    bad.validate().unwrap();
+    bad.max_steering = 1.01;
     assert!(bad.validate().is_err());
 }
 #[test]

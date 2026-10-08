@@ -78,6 +78,39 @@ class TrainingTests(unittest.TestCase):
         folders=list((self.root/'runs').iterdir());self.assertEqual(len(folders),1)
         self.assertFalse(read(folders[0]/'manifest.json')['complete'])
 
+    def test_managed_stop_resumes_identically(self):
+        progress=[]
+        partial=train(self.dataset,self.cp,should_stop=lambda: len(progress)==1,on_progress=progress.append)
+        self.assertEqual(progress[0]['epoch'],1)
+        self.assertTrue(read(partial/'summary.json')['interrupted'])
+        resumed=train(resume=partial/'last.pt')
+        full=train(self.dataset,self.cp)
+        for key,value in self.states(full).items():
+            self.assertTrue(torch.equal(value,self.states(resumed)[key]))
+
+    def test_managed_stop_before_epoch_is_incomplete(self):
+        partial=train(self.dataset,self.cp,should_stop=lambda: True)
+        self.assertFalse(read(partial/'manifest.json')['complete'])
+        self.assertFalse((partial/'last.pt').exists())
+
+    def test_managed_evaluation_is_frozen_and_cancellable(self):
+        from Evaluator.evaluate import replay
+        from .common import new_folder
+        data=[dict(r,run_id='teacher-test',sequence=i,observation_ns=i*50_000_000,speed_kmh=10.)
+              for i,r in enumerate(self.data)]
+        (self.dataset/'test.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in data),encoding='utf-8')
+        manifest=read(self.dataset/'manifest.json');finish(self.dataset,manifest)
+        run=train(self.dataset,self.cp)
+        before=digest(run/'best.pt')
+        progress=[]
+        with patch('Evaluator.evaluate.new_folder',side_effect=lambda _,prefix:new_folder(self.root/'evaluations',prefix)):
+            complete=replay(run,self.dataset,'test',on_progress=progress.append)
+            stopped=replay(run,self.dataset,'test',should_stop=lambda:True)
+        self.assertTrue(read(complete/'manifest.json')['complete'])
+        self.assertEqual(progress[-1]['samples'],len(data))
+        self.assertFalse(read(stopped/'manifest.json')['complete'])
+        self.assertEqual(digest(run/'best.pt'),before)
+
     def test_checkpoint_and_source_tamper_rejected(self):
         run=train(self.dataset,self.cp,epoch_limit=1)
         with (run/'last.pt').open('ab') as f:f.write(b'changed')

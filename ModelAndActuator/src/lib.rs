@@ -1,18 +1,25 @@
 pub mod binding;
+#[cfg(windows)] pub mod gamepad;
 pub mod core;
 pub mod ipc;
 pub mod logger;
 pub mod platform;
 pub mod policy;
 pub mod profile;
+pub mod rl;
 pub mod runner;
 pub mod simulation;
+pub mod v2_shadow;
 pub use poleposition_vjoy::{Axes, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(default)]
+    pub reinforcement: Option<rl::Config>,
+    #[serde(default)]
+    pub v2_shadow: Option<v2_shadow::Config>,
     #[serde(default)]
     pub policy: Option<policy::Config>,
     #[serde(default)]
@@ -52,6 +59,38 @@ impl Config {
         Ok(c)
     }
     pub fn validate(&self) -> Result<()> {
+        if let Some(rl) = &self.reinforcement {
+            rl.validate()?;
+            let b = self
+                .baseline
+                .as_ref()
+                .ok_or("RL needs baseline preparation")?;
+            if self.policy.is_some()
+                || self.v2_shadow.is_some()
+                || b.config.single_lap
+                || b.config.target_speed_kmh != 10.
+                || b.config.max_brake > 0.6
+                || self.poll_hz != 100.
+                || self.test_seconds != rl.seconds + 30.
+            {
+                return Err("Invalid separate reinforcement envelope".into());
+            }
+        }
+        if let Some(v2) = &self.v2_shadow {
+            let baseline = self
+                .baseline
+                .as_ref()
+                .ok_or("V2 shadow requires baseline")?;
+            if v2.training.is_empty()
+                || self.policy.is_some()
+                || baseline.config.single_lap
+                || baseline.config.target_speed_kmh != 10.
+                || baseline.config.max_brake > 0.60
+                || self.poll_hz != 100.
+            {
+                return Err("V2 shadow requires separate short 10km/h, 100Hz profile".into());
+            }
+        }
         if let Some(policy) = &self.policy {
             policy.validate()?;
             let baseline = self
@@ -106,9 +145,16 @@ impl Config {
             || self.poll_hz < 20.
             || self.display_hz > self.poll_hz
             || self.max_speed_kmh > 20.
-            || self.max_steering > if single_lap { 0.35 } else { 0.15 }
-            || self.max_throttle > 0.20
-            || self.test_seconds > if single_lap { 3600. } else { 30. }
+            || self.max_steering > 1.
+            || self.max_throttle > if self.reinforcement.as_ref().is_some_and(|r| r.unrestricted_motion) { 1. } else { 0.20 }
+            || self.test_seconds
+                > if self.reinforcement.is_some() {
+                    1830.
+                } else if single_lap {
+                    3600.
+                } else {
+                    30.
+                }
             || self.bind_seconds > 15.
             || self.stopped_kmh > 1.
             || self.stopped_seconds < 0.5

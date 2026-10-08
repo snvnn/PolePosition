@@ -6,6 +6,7 @@ use crate::{
     platform,
     profile::Calibration,
 };
+use poleposition_management::prepare;
 use poleposition_recorder::{Timing, session::Tracker};
 use poleposition_state::{
     model::{Prepared, hash},
@@ -70,30 +71,77 @@ pub fn test(
     scenario: &str,
     profile_path: &Path,
 ) -> Result<PathBuf> {
+    test_managed(config, prepared_path, scenario, profile_path, None)
+}
+
+pub fn test_managed(
+    config: Config,
+    prepared_path: &Path,
+    scenario: &str,
+    profile_path: &Path,
+    managed: Option<&poleposition_management::Managed>,
+) -> Result<PathBuf> {
+    test_managed_shared(config, prepared_path, scenario, profile_path, managed, None)
+}
+
+pub fn test_managed_shared(
+    config: Config,
+    prepared_path: &Path,
+    scenario: &str,
+    profile_path: &Path,
+    managed: Option<&poleposition_management::Managed>,
+    shared: Option<(&platform::Hotkeys, &Arc<AtomicU64>)>,
+) -> Result<PathBuf> {
     if scenario != "demo" {
         crate::ipc::Scenario::new(scenario)?;
     }
     if (scenario == "demo") != config.baseline.is_some() {
         return Err("Demo/config mismatch".into());
     }
-    let prepared = Prepared::load(prepared_path)?;
+    let prepared = prepare(managed, "path", || Prepared::load(prepared_path))?;
+    let v2_inputs = if let Some(rl) = &config.reinforcement {
+        prepare(managed, "model", || rl.verify(&prepared))?.2
+    } else if let Some(v2) = &config.v2_shadow {
+        prepare(managed, "model", || v2.verify(&prepared))?.inputs
+    } else {
+        Vec::new()
+    };
     if let Some(policy) = &config.policy {
-        policy.verify(&prepared.path)?;
+        prepare(managed, "model", || policy.verify(&prepared.path))?;
     }
     if let Some(demo) = &config.baseline
         && std::fs::canonicalize(&demo.prepared)? != std::fs::canonicalize(prepared_path)?
     {
         return Err("Demo prepared path mismatch".into());
     }
-    let mut device = Native::load(Path::new(&config.dll))?;
-    let probe = device.probe()?;
-    let calibration = Calibration::load(profile_path, &probe, &prepared.identity)?;
-    let hotkeys = platform::Hotkeys::register()?;
-    let ctrl_c = Arc::new(AtomicU64::new(0));
-    let signal = ctrl_c.clone();
-    ctrlc::set_handler(move || {
-        let _ = signal.compare_exchange(0, platform::now_ns(), Ordering::AcqRel, Ordering::Relaxed);
+    let (mut device, probe) = prepare(managed, "driver", || {
+        let device = Native::load(Path::new(&config.dll))?;
+        let probe = device.probe()?;
+        poleposition_vjoy::validate_probe(&probe, true)?;
+        Ok((device, probe))
     })?;
+    let calibration = prepare(managed, "calibration", || {
+        Calibration::load(profile_path, &probe, &prepared.identity)
+    })?;
+    let owned_keys = if shared.is_none() {
+        Some(prepare(managed, "hotkeys", platform::Hotkeys::register)?)
+    } else {
+        None
+    };
+    let hotkeys = shared
+        .map(|s| s.0)
+        .unwrap_or_else(|| owned_keys.as_ref().unwrap());
+    let ctrl_c = shared
+        .map(|s| s.1.clone())
+        .unwrap_or_else(|| Arc::new(AtomicU64::new(0)));
+    if shared.is_none() {
+        let signal = ctrl_c.clone();
+        ctrlc::set_handler(move || {
+            let _ =
+                signal.compare_exchange(0, platform::now_ns(), Ordering::AcqRel, Ordering::Relaxed);
+        })?;
+    }
+    hotkeys.start.store(false, Ordering::Release);
     let output = create_output(Path::new(&config.output_dir), scenario, None)?;
     let config_path = output.join("config.json");
     write_json(&config_path, &config)?;
@@ -108,6 +156,12 @@ pub fn test(
         "reference_length_m":prepared.model.length,
         "reference_grade":"100*(Y(s+5m)-Y(s-5m))/10m; signed estimate from recorded reference, not independently surveyed road slope"});
     write_json(&output.join("manifest.json"), &manifest)?;
+    for path in &v2_inputs {
+        manifest["input_sha256"][path.to_string_lossy().into_owned()] = json!(hash(path)?);
+    }
+    if !v2_inputs.is_empty() {
+        finish_manifest(&output.join("manifest.json"), &manifest)?;
+    }
     if let Some(policy) = &config.policy {
         for name in ["manifest.json", "model.json"] {
             let p = Path::new(&policy.model).join(name).canonicalize()?;
@@ -117,10 +171,24 @@ pub fn test(
     }
     let mut result = (|| -> Result<()> {
         let mut sink = Sink::start(&output, config.queue_capacity, Some(config.display_hz))?;
-        let mut producer = Producer::spawn(&std::env::current_exe()?, &config_path, scenario)?;
+        let mut producer = if config.reinforcement.is_none() {
+            Some(Producer::spawn(
+                &std::env::current_exe()?,
+                &config_path,
+                scenario,
+            )?)
+        } else {
+            None
+        };
+        let mut reinforcement = if config.reinforcement.is_some() {
+            Some(crate::rl::Runtime::new(&config, &prepared)?)
+        } else {
+            None
+        };
+        let mut lap_sample = crate::rl::LapSample::default();
         // All fallible setup is complete before acquiring the physical device.
-        calibration.verify()?;
-        prepared.verify()?;
+        prepare(managed, "calibration", || calibration.verify())?;
+        prepare(managed, "path", || prepared.verify())?;
         device.acquire(calibration.mapping.clone())?;
         if let Err(e) = device.send(Axes::NEUTRAL) {
             return Err(format!("Initial neutral failed: {e}; device state unconfirmed").into());
@@ -142,9 +210,16 @@ pub fn test(
                 })
                 .collect::<Vec<_>>()
         });
+        let v2_hashes = v2_inputs
+            .iter()
+            .map(|p| (p.clone(), hash(p)))
+            .collect::<Vec<_>>();
         let monitor = thread::spawn(move || {
             while !end.load(Ordering::Acquire) {
                 if hash(&profile_path).map_or(true, |h| h != profile_hash)
+                    || v2_hashes.iter().any(|(p, h)| {
+                        h.as_ref().is_err() || hash(p).ok().as_ref() != h.as_ref().ok()
+                    })
                     || poleposition_state::model::verify_map(&profile_inputs, None).is_err()
                     || policy_inputs.as_ref().is_some_and(|v| {
                         v.iter().any(|(p, h)| {
@@ -171,10 +246,13 @@ pub fn test(
         );
         let mut guard = Guard::new(config.clone());
         let mut health = Health::default();
+        let mut worker_ready = false;
+        let mut applied_history = crate::v2_shadow::AppliedHistory::default();
         let mut path_observation = None;
         let mut demo_gate_reason = String::new();
         let mut last_demo_reason = String::new();
         let mut last_policy_source = String::new();
+        let mut last_conditions = 0u64;
         let mut last_policy_observation = None;
         let mut policy_feature_timing = Timing::default();
         let mut policy_inference_timing = Timing::default();
@@ -210,6 +288,7 @@ pub fn test(
         let period = Duration::from_secs_f64(1. / config.poll_hz);
         let mut next = Instant::now();
         let mut process_check = Instant::now() - Duration::from_secs(1);
+        let mut last_progress = Instant::now() - Duration::from_secs(1);
         let mut game_absent = false;
         event(
             &mut sink,
@@ -218,7 +297,7 @@ pub fn test(
             format!(
                 "guardian_pid={} producer_pid={}; F7=start F8=stop",
                 std::process::id(),
-                producer.child.id()
+                producer.as_ref().map_or(0, |p| p.child.id())
             ),
         );
         loop {
@@ -243,6 +322,22 @@ pub fn test(
                         event(&mut sink, base + e.elapsed_ns, &e.kind, e.detail);
                     }
                     let raw = row.frame.clone();
+                    if config.reinforcement.is_some() && guard.mode == Mode::Running
+                        && base + raw.elapsed_ns >= last_conditions + 1_000_000_000 {
+                        last_conditions = base + raw.elapsed_ns;
+                        event(&mut sink,platform::now_ns(),"rl_conditions",json!({
+                            "observation_ns":last_conditions,"session_type":raw.sample.session_type,
+                            "session_index":raw.sample.session_index,"fuel_litres":raw.sample.fuel_litres,
+                            "clock_seconds":raw.sample.clock_seconds,"rain_intensity":raw.sample.rain_intensity
+                        }).to_string());
+                    }
+                    lap_sample = crate::rl::LapSample {
+                        time_ns: base + raw.elapsed_ns,
+                        completed_laps: raw.sample.completed_laps,
+                        lap_time_ms: raw.sample.lap_time_ms,
+                        progress: raw.sample.progress as f64,
+                        lap_valid: raw.sample.lap_valid,
+                    };
                     let o = poleposition_state::runner::from_frame(row);
                     let identity_ok = o.identity.as_ref() == Some(&prepared.identity);
                     let state = processor.update(o, start.elapsed().as_nanos() as u64);
@@ -251,6 +346,10 @@ pub fn test(
                         base + raw.elapsed_ns,
                         raw.sample.gear_raw,
                     );
+                    if let Some(rl) = &mut reinforcement {
+                        rl.observe_axes(base + raw.elapsed_ns, state.tracking_epoch,
+                            [raw.sample.steering_raw as f64, raw.sample.throttle as f64, raw.sample.brake as f64]);
+                    }
                     health = Health {
                         rpm: raw.sample.rpm,
                         observation_sequence: sequence,
@@ -368,9 +467,13 @@ pub fn test(
                 let gate = path_observation
                     .as_ref()
                     .ok_or("missing_path_state")
-                    .and_then(|o| o.check(&demo.config, now, guard.mode == Mode::Waiting));
+                    .and_then(|o| o.check_with_speed_limit(&demo.config, now, guard.mode == Mode::Waiting,
+                        !config.reinforcement.as_ref().is_some_and(|r| r.unrestricted_motion)));
                 demo_gate_reason = gate.err().unwrap_or("").into();
-                if !demo_gate_reason.is_empty() {
+                let rl_task_failure = reinforcement.as_ref().is_some_and(|r| r.active())
+                    && ["path_distance_limit", "heading_limit"]
+                        .contains(&demo_gate_reason.as_str());
+                if !demo_gate_reason.is_empty() && !rl_task_failure {
                     health.ready = false;
                     if guard.mode == Mode::Running {
                         guard.stop(now, &format!("demo:{demo_gate_reason}"));
@@ -379,13 +482,33 @@ pub fn test(
             }
             health.game_halted =
                 game_absent || halted_at.is_some_and(|t| now.saturating_sub(t) < config.age_ns());
-            producer.publish(Context {
+            let context = Context {
+                previous_applied: applied_history
+                    .before(health.observation_ns, health.tracking_epoch),
                 path: path_observation.clone(),
                 health: health.clone(),
                 armed_ns: guard.armed_ns,
                 sent_ns: now,
-            });
-            if let Some((reply, now)) = producer.take_reply() {
+            };
+            let reply = if let Some(rl) = &mut reinforcement {
+                if guard.mode == Mode::Stopping || guard.mode == Mode::Finished {
+                    None
+                } else {
+                    match rl.update(&context, &lap_sample, now, config.age_ns()) {
+                        Ok(r) => r.map(|r| (r, platform::now_ns())),
+                        Err(e) => {
+                            event(&mut sink, now, "rl_error", e.to_string());
+                            guard.stop(now, "rl_system_error");
+                            None
+                        }
+                    }
+                }
+            } else {
+                let producer = producer.as_ref().unwrap();
+                producer.publish(context);
+                producer.take_reply()
+            };
+            if let Some((reply, now)) = reply {
                 let begin = Instant::now();
                 let c = reply.command;
                 let request = c.clone();
@@ -399,6 +522,7 @@ pub fn test(
                 } else {
                     Err("unknown_observation")
                 };
+                worker_ready |= check.is_ok();
                 let last_validated_ns = begin.elapsed().as_nanos() as u64;
                 validation_timing.add(Duration::from_nanos(last_validated_ns));
                 let last_ipc_ns = now.checked_sub(request.created_ns);
@@ -466,12 +590,16 @@ pub fn test(
                 guard.stop(now, "calibration_changed");
             }
             if guard.mode == Mode::Waiting
+                && !config.reinforcement.as_ref().is_some_and(|r| r.unlimited_duration)
                 && now.saturating_sub(base) >= (config.arm_wait_seconds * 1e9) as u64
             {
                 guard.stop(now, "arm_timeout");
             }
             let now = platform::now_ns();
             let hotkey_time = hotkeys.stop_observed_ns.load(Ordering::Acquire);
+            if let Some(reason) = managed.and_then(|manager| manager.control.stop_reason()) {
+                guard.stop(now, reason);
+            }
             let ctrl_time = ctrl_c.load(Ordering::Acquire);
             if let Some(trigger) = [hotkey_time, ctrl_time]
                 .into_iter()
@@ -491,7 +619,7 @@ pub fn test(
                 start: hotkeys.start.swap(false, Ordering::AcqRel),
                 stop: hotkeys.stop.swap(false, Ordering::AcqRel)
                     || ctrl_c.load(Ordering::Acquire) > 0,
-                producer_lost: producer.lost(),
+                producer_lost: producer.as_mut().is_some_and(|p| p.lost()),
                 log_failed: sink.failed.load(Ordering::Acquire),
                 source_changed,
                 explicit_release: false,
@@ -548,6 +676,11 @@ pub fn test(
                             row.axis_y = Some(y);
                             row.axis_z = Some(z);
                             guard.acknowledge(sent_at, axes);
+                            applied_history.push(crate::v2_shadow::Applied {
+                                at_ns: sent_at,
+                                tracking_epoch: health.tracking_epoch,
+                                axes,
+                            });
                         }
                         Err(e) => {
                             let e = e.to_string();
@@ -588,6 +721,26 @@ pub fn test(
                     break;
                 }
             }
+            if let Some(manager) = managed
+                && last_progress.elapsed() >= Duration::from_millis(200)
+            {
+                let phase = match guard.mode {
+                    Mode::Waiting if config.v2_shadow.is_some() && !worker_ready => "preparing",
+                    Mode::Waiting => "waiting_f7",
+                    Mode::Stopping => "stopping",
+                    Mode::Finished => "finished",
+                    Mode::Running if last_policy_source == "model" => "model_control",
+                    Mode::Running if config.v2_shadow.is_some() => "policy_shadow",
+                    Mode::Running => "pid_start",
+                };
+                manager.emit(json!({"event":"progress","phase":phase,"connection":connection,
+                    "identity":prepared.identity,"fresh":health.fresh(now,config.age_ns()),"tracking_ready":health.ready,
+                    "foreground":health.foreground,"speed_kmh":health.speed_kmh,"gear_raw":health.gear_raw,
+                    "vjoy":"acquired","calibration":"verified","elapsed_seconds":start.elapsed().as_secs_f64(),
+                    "samples":policy_prediction_samples,
+                    "reason":guard.reason,"controller_reason":last_demo_reason,"result_dir":output}));
+                last_progress = Instant::now();
+            }
             if let Ok(mut display) = sink.display.try_lock() {
                 *display = format!(
                     "{:?} {} | ACC={} foreground={} ready={} speed={:.2} gear_raw={} | F7 start / F8 stop | log_drops={} demo_gate={}",
@@ -625,6 +778,7 @@ pub fn test(
         let recording_valid = counts.is_ok() && dropped == 0;
         let verified = recording_valid && device_error.is_none() && released;
         let summary = json!({"schema_version":1,"normal_shutdown":verified,"recording_valid":recording_valid,"released":released,"stop_confirmed":guard.stop_confirmed,
+            "rl_rng_state":reinforcement.as_ref().map(|r|r.rng_state),
             "controller_exit_reason":last_demo_reason,"lap_completed":config.baseline.as_ref().is_some_and(|b|b.config.single_lap)&&last_demo_reason=="lap_complete"&&verified&&guard.stop_confirmed,
             "released_while_halted":guard.released_while_halted,"termination_reason":guard.reason,"scenario_completed":scenario_complete,
             "device_error":device_error,"log_error":log_error,"dropped":dropped,"written":counts.as_ref().ok(),"sent_reports":sends,"rejected_commands":rejected,"missed_periods":missed,
@@ -639,6 +793,12 @@ pub fn test(
         prepared.verify()?;
         if let Some(policy) = &config.policy {
             policy.verify(&prepared.path)?;
+        }
+        if let Some(v2) = &config.v2_shadow {
+            v2.verify(&prepared)?;
+        }
+        if let Some(rl) = &config.reinforcement {
+            rl.verify(&prepared)?;
         }
         if !verified {
             return Err("Test ended with device/logging/release failure; see summary.json".into());

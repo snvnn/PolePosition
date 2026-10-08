@@ -18,6 +18,8 @@ use std::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Context {
     #[serde(default)]
+    pub previous_applied: Option<crate::v2_shadow::Applied>,
+    #[serde(default)]
     pub path: Option<poleposition_baseline::Observation>,
     pub health: Health,
     pub armed_ns: Option<u64>,
@@ -261,6 +263,17 @@ impl Scenario {
     }
 }
 pub fn worker(config: Config, scenario: &str) -> Result<()> {
+    let mut v2_shadow = if let Some(v2) = &config.v2_shadow {
+        let demo = config.baseline.as_ref().ok_or("Missing v2 baseline")?;
+        let prepared =
+            poleposition_state::model::Prepared::load(std::path::Path::new(&demo.prepared))?;
+        Some(crate::v2_shadow::Runtime::new(
+            v2.verify(&prepared)?,
+            prepared.model,
+        ))
+    } else {
+        None
+    };
     let mut policy = if let Some(policy_config) = &config.policy {
         let demo = config.baseline.as_ref().ok_or("Policy requires baseline")?;
         let prepared =
@@ -297,7 +310,7 @@ pub fn worker(config: Config, scenario: &str) -> Result<()> {
     // Policy history follows fresh guardian contexts. Sleeping another full
     // 10 ms after computation decimates 100 Hz observations through phase drift.
     // Still consume only the latest context: never replay a command backlog.
-    let follow_observations = config.policy.is_some();
+    let follow_observations = config.policy.is_some() || config.v2_shadow.is_some();
     while !contexts.closed.load(Ordering::Acquire) && !contexts.fault.load(Ordering::Acquire) {
         if follow_observations {
             current = contexts.take();
@@ -313,6 +326,11 @@ pub fn worker(config: Config, scenario: &str) -> Result<()> {
                 .as_mut()
                 .map(|v| v.update(c.path.as_ref(), now, c.armed_ns));
             let mut policy_diagnostic = None;
+            if let Some(v2) = &mut v2_shadow
+                && let Some(pid) = &diagnostic
+            {
+                policy_diagnostic = v2.update(c, pid, now)?;
+            }
             if let Some(policy) = &mut policy
                 && let Some(path) = &c.path
                 && let Some(pid) = &diagnostic
@@ -372,6 +390,7 @@ mod tests {
     fn brake_hold_never_generates_steering_or_throttle() {
         let mut scenario = Scenario::new("brake-hold").unwrap();
         let mut context = Context {
+            previous_applied: None,
             path: None,
             health: Health::default(),
             armed_ns: None,
@@ -407,6 +426,7 @@ mod tests {
     fn crawl_waits_for_stop() {
         let mut s = Scenario::new("crawl").unwrap();
         let mut c = Context {
+            previous_applied: None,
             path: None,
             health: Health {
                 speed_kmh: 5.,
@@ -427,6 +447,7 @@ mod tests {
     fn crawl_holds_brake_until_forward_gear() {
         let mut s = Scenario::new("crawl").unwrap();
         let mut c = Context {
+            previous_applied: None,
             path: None,
             health: Health {
                 live: true,

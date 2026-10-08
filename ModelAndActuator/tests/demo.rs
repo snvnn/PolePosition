@@ -78,6 +78,7 @@ fn demo_worker_drives_mock_and_producer_loss_stops() {
             accumulated_m: 0.,
         };
         producer.publish(Context {
+            previous_applied: None,
             path: Some(o),
             health: h.clone(),
             armed_ns: guard.armed_ns,

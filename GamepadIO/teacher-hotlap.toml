@@ -1,0 +1,11 @@
+poll_hz = 100.0
+stale_seconds = 0.1
+retry_seconds = 1.0
+queue_capacity = 4096
+output_dir = "recordings"
+teleport_margin_m = 30.0
+weather = "Use the same hotlap session preset for all three demonstrations; recorded rain_intensity"
+traffic = "Hotlap; session spawn to first corner exit; restart before each recording"
+fuel = "Same hotlap start preset; use recorded fuel_litres"
+tyres = "Same hotlap start preset"
+assists = "gamepad_v1 physical Xbox pad; automatic gearbox and clutch; verified profile snapshots; hotlap spawn start"

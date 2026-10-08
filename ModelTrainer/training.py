@@ -53,7 +53,8 @@ def checkpoint(path, data):
     os.replace(tmp,path)
 
 
-def train(dataset=None, config_path=None, resume=None, smoke=False, epoch_limit=None):
+def train(dataset=None, config_path=None, resume=None, smoke=False, epoch_limit=None,
+          should_stop=None, on_progress=None):
     previous=None
     if resume:
         parent,pm=load_artifact(Path(resume).parent,'policy_training',complete=False)
@@ -94,8 +95,10 @@ def train(dataset=None, config_path=None, resume=None, smoke=False, epoch_limit=
     try:
         if previous:checkpoint(out/'last.pt',previous)
         for epoch in range(start,cap+1 if bad<c['patience'] else start):
+            if should_stop and should_stop():raise KeyboardInterrupt()
             model.train();permutation=torch.randperm(len(x));total=0.;weight_sum=0.
             for batch in permutation.split(c['batch_size']):
+                if should_stop and should_stop():raise KeyboardInterrupt()
                 optimizer.zero_grad(set_to_none=True)
                 loss=(loss_fn(model(x[batch]),y[batch])*w[batch]).mean()
                 if not torch.isfinite(loss):raise ValueError('Nonfinite training loss')
@@ -114,6 +117,7 @@ def train(dataset=None, config_path=None, resume=None, smoke=False, epoch_limit=
                 numpy_rng=[np.random.get_state()[0],np.random.get_state()[1].tolist(),*np.random.get_state()[2:]],
                 dataset_sha256=digest(dataset/'manifest.json'),config=c,smoke=smoke)
             checkpoint(out/'last.pt',state)
+            if on_progress:on_progress(dict(epoch=epoch,updates=updates,loss=vl,result_dir=str(out)))
             print(f'epoch={epoch} updates={updates} train={total/weight_sum:.7f} validation={vl:.7f} best={best_epoch}',flush=True)
             if bad>=c['patience']:break
     except KeyboardInterrupt:

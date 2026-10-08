@@ -1,0 +1,12 @@
+profile = "input_profiles/gamepad/profile.json"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+model = "reinforcement_runs/gamepad-imitation-1791298274998489700-29029793"
+guardian_config = "ModelAndActuator/config.toml"
+controller_config = "BaselineController/config.toml"
+output_dir = "actuator_runs"
+# Initial assisted diagnostic; not a pass for the autonomous stage ladder.
+seconds = 5
+
+[intervention]
+teacher_slot = 0
+isolation_config = "input_profiles/gamepad/isolation.json"

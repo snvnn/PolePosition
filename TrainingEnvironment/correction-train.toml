@@ -1,0 +1,9 @@
+recordings = ["recordings/1791297745637986800-24336-0", "recordings/1791298123507557100-2160-0", "recordings/1791298173258624200-16548-0"]
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+speed_profile = "reinforcement_runs/human-first-lap-imitation-1791019571061957400-b6d9e4ca/speed-profile.json"
+parent_model = "reinforcement_runs/gamepad-imitation-1791298274998489700-29029793"
+require_corrections = true
+# Filled only after verified real human intervention runs. Never use model actions as labels.
+corrections = []
+epochs = 50
+output_dir = "reinforcement_runs"

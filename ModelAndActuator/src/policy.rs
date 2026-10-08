@@ -115,6 +115,10 @@ pub struct Diagnostic {
     pub feature_ns: u64,
     pub inference_ns: Option<u64>,
     pub model_elapsed_ns: u64,
+    #[serde(default)]
+    pub prediction_steering: Option<f32>,
+    #[serde(default)]
+    pub feature_schema_version: Option<u32>,
 }
 pub struct Runtime {
     config: Config,
@@ -164,6 +168,8 @@ impl Runtime {
         }
         let mut out = pid.clone();
         let mut d = Diagnostic {
+            prediction_steering: None,
+            feature_schema_version: Some(1),
             now_ns: now,
             observation_sequence: o.sequence,
             observation_ns: o.observation_ns,
