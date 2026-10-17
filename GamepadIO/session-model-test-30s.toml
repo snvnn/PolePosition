@@ -1,0 +1,15 @@
+profile = "input_profiles/gamepad/intervention-profile.json"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+model = "reinforcement_runs/gamepad-imitation-1792231181059399600-43934c30"
+guardian_config = "ModelAndActuator/config.toml"
+controller_config = "BaselineController/config.toml"
+output_dir = "actuator_runs"
+# New whole-session model diagnostic; LPF disabled.
+seconds = 30
+steering_smoothing_ms = 0.0
+# Reference-line distance and heading are recorded, not used as stop thresholds.
+disable_path_departure_stop = true
+
+[intervention]
+teacher_slot = 0
+isolation_config = "input_profiles/gamepad/isolation.json"

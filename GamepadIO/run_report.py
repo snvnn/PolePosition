@@ -62,7 +62,7 @@ def inspect_shutdown(rows):
     return dict(passed=not errors,errors=sorted(set(errors)),tracking_epoch=epoch)
 
 
-def report(run, *, replace=False):
+def report(run, *, replace=False, render_plot=True):
     from TrackModel.model import load_reference
     from TrainingEnvironment.human_imitation import project
     run=Path(run).resolve();m=read(run/'manifest.json');summary=read(run/'summary.json')
@@ -71,21 +71,44 @@ def report(run, *, replace=False):
     model=read(Path(m['model'])/'manifest.json')
     verify_hashes(model['output_sha256'],m['model'])
     if digest(Path(m['model'])/'model.json')!=m['model_sha256']:raise ValueError('Different live model')
-    recording=Path(model['recordings'][2]);meta=read(recording/'metadata.json')
-    if meta.get('input_semantics')!='gamepad_v1':raise ValueError('Raw gamepad teacher required')
+    fresh=model.get('teacher_source')=='intervention_logs'
+    lap_teacher=model.get('teacher_source')=='raw_gamepad_laps'
+    heldout=None
+    if lap_teacher:
+        candidates=[r for r in model['teacher_laps'] if r['split']=='validation']
+        if len(candidates)!=1:raise ValueError('Exactly one held-out comparison lap required')
+        heldout=candidates[0]
+    session_teacher=model.get('teacher_source')=='raw_gamepad_sessions'
+    if session_teacher:
+        candidates=[r for r in model['teacher_sessions'] if r['split']=='validation']
+        if len(candidates)!=1:raise ValueError('Exactly one held-out session required')
+    recording=Path(candidates[0]['recording'] if session_teacher else heldout['recording'] if heldout else model['validation_run'] if fresh else model['recordings'][2])
+    if not fresh and read(recording/'metadata.json').get('input_semantics')!='gamepad_v1':raise ValueError('Raw gamepad teacher required')
     rows=[json.loads(s) for s in (run/'samples.jsonl').read_text().splitlines()]
     transport,pairs=inspect_log(rows)
     shutdown=inspect_shutdown(rows)
     prepared=Path(m['prepared']);pm=read(prepared/'manifest.json');heading=read(prepared/'heading_profile.json')
     ref=load_reference(pm['track_model_path']);length=ref['manifest']['total_length_m']
-    with (recording/'telemetry.csv').open(newline='') as f:teacher=list(csv.DictReader(f))
-    # Comparison bins never join sequential history over the reference seam.
-    geom=project(teacher,ref['rows'],length,heading,allow_finish_seam=True)
-    geometry={int(r['sequence']):g for r,g in zip(teacher,geom)}
-    bins={}
-    for r,_,a in align(teacher,read_inputs(recording/'inputs.csv')):
-        s,e,h=geometry[int(r['sequence'])][:3]
-        bins.setdefault(int(s),[]).append([a['stick_x'],a['throttle'],a['brake'],float(r['steering_raw']),float(r['speed_kmh']),h,e])
+    if fresh:
+        from TrainingEnvironment.corrections import load_corrections
+        labels,_,_=load_corrections([recording],model['controls_sha256'],model['assists_sha256'])
+        observations={r['observation_ns']:r for r in (json.loads(line) for line in (recording/'samples.jsonl').read_text().splitlines()) if r['kind']=='observation'}
+        bins={}
+        for label in labels:
+            o=observations[label['observation_ns']];state=o['state'];sample=o['sample']
+            bins.setdefault(int(state['s_m']),[]).append(label['action']+[sample['steering_raw'],sample['speed_kmh'],state['heading_error_rad'],state['lateral_error_m']])
+    else:
+        with (recording/'telemetry.csv').open(newline='') as f:teacher=list(csv.DictReader(f))
+        if heldout is not None:
+            teacher=[r for r in teacher if int(r['segment_id'])==heldout['segment_id'] and heldout['start_elapsed_ns']<=int(r['elapsed_ns'])<heldout['end_elapsed_ns']]
+            if not teacher or any(r['lap_valid']!='true' for r in teacher):raise ValueError('Invalid held-out comparison lap')
+        # Comparison bins never join sequential history over the reference seam.
+        geom=project(teacher,ref['rows'],length,heading,allow_finish_seam=True)
+        geometry={int(r['sequence']):g for r,g in zip(teacher,geom)}
+        bins={}
+        for r,_,a in align(teacher,read_inputs(recording/'inputs.csv')):
+            s,e,h=geometry[int(r['sequence'])][:3]
+            bins.setdefault(int(s),[]).append([a['stick_x'],a['throttle'],a['brake'],float(r['steering_raw']),float(r['speed_kmh']),h,e])
     comparison=[]
     after_rows=sorted((r for r in rows if r['kind']=='observation'),key=lambda r:r['observation_ns'])
     after_times=[r['observation_ns'] for r in after_rows]
@@ -93,7 +116,7 @@ def report(run, *, replace=False):
         state=obs['state'];s=state['s_m']
         if s is None or int(s) not in bins:continue
         human=np.array(bins[int(s)]).mean(0).tolist()
-        live=list(policy['action'])+[obs['sample']['steering_raw'],obs['sample']['speed_kmh'],state['heading_error_rad'],state['lateral_error_m']]
+        live=list(policy.get('selected_action',policy['action']))+[obs['sample']['steering_raw'],obs['sample']['speed_kmh'],state['heading_error_rad'],state['lateral_error_m']]
         index=bisect.bisect_right(after_times,sent['send_end_ns']);following=after_rows[index] if index<len(after_rows) else None
         comparison.append(dict(s_m=s,observation_ns=obs['observation_ns'],send_end_ns=sent['send_end_ns'],
             next_observation_ns=following['observation_ns'] if following else None,
@@ -114,7 +137,7 @@ def report(run, *, replace=False):
         comparison=comparison,first_corner_interval_m=first_corner,corner_interval_method='reference curvature > 0.003 /m, gaps <= 40 m; verify against track',
         first_corner_pass_provisional=cleared,performance_verified=False,reason=summary['reason'],
         attribution='inspect requested stick versus transmitted report, then ACC response; driving failure is not automatically device error')
-    if comparison:
+    if comparison and render_plot:
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt

@@ -1,0 +1,10 @@
+session_teacher_recordings = true
+session_split = "input_profiles/gamepad/teacher-cleaned-split-20261017.json"
+exclude_engine_state = true
+exclude_longitudinal_response = true
+exclude_previous_actions = true
+feature_transform = "seam_bridge_15m_v1"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+speed_profile = "reinforcement_runs/human-first-lap-imitation-1791019571061957400-b6d9e4ca/speed-profile.json"
+epochs = 50
+output_dir = "reinforcement_runs"

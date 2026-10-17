@@ -64,7 +64,7 @@ def align(observations, inputs):
     return result
 
 
-def prepare_recording(recording, prepared, speed_file, output, should_stop=lambda:False):
+def prepare_recording(recording, prepared, speed_file, output, should_stop=lambda:False, *, lap=None, feature_transform="original", include_invalid=False, augmentation=None):
     from DrivingRecorder.validate_recording import validate
     from TrackModel.model import load_reference
     from .human_imitation import project, projection_breaks
@@ -79,8 +79,13 @@ def prepare_recording(recording, prepared, speed_file, output, should_stop=lambd
     profile = meta['input_profile']
     for name, field in [('controls','controls'),('assists','assists')]:
         if digest(recording/f'{name}.snapshot.json') != profile['input_sha256'][profile[field]]:
-            raise ValueError('Recording settings snapshot mismatch')
+            from .lap_gamepad import equivalent_controls
+            if name != 'controls' or not equivalent_controls(recording, profile):
+                raise ValueError('Recording settings snapshot mismatch')
     with (recording/'telemetry.csv').open(newline='') as f: rows=list(csv.DictReader(f))
+    if lap is not None:
+        if lap not in report['laps'] or not lap['all_samples_lap_valid']: raise ValueError('Unverified lap selection')
+        rows=[r for r in rows if int(r['segment_id'])==lap['segment_id'] and lap['start_elapsed_ns']<=int(r['elapsed_ns'])<lap['end_elapsed_ns']]
     pm=read(prepared/'manifest.json'); heading=read(prepared/'heading_profile.json')
     if summary['first_identity']!=heading['identity']: raise ValueError('Car/track mismatch')
     reference=load_reference(pm['track_model_path']); length=reference['manifest']['total_length_m']
@@ -88,25 +93,31 @@ def prepare_recording(recording, prepared, speed_file, output, should_stop=lambd
     geom=project(rows, reference['rows'], length, heading, allow_finish_seam=True)
     seam_breaks=projection_breaks(rows,geom,length,allow_finish_seam=True)
     # A seam is a history reset, never a fabricated smooth path or extra travel.
-    contexts={}; epoch=0; start_ns=0; previous_segment=None
+    from .augmentation import invalid_windows, excluded, phase_select, sample_weight
+    windows=invalid_windows(rows,augmentation["exclude_before_s"],augmentation["exclude_after_s"]) if augmentation else []
+    contexts={}; epoch=0; start_ns=0; previous_segment=None; previous_excluded=False
+    excluded_sequences=[]
     for i,row in enumerate(rows):
-        if i in seam_breaks or row['segment_id']!=previous_segment:
+        is_excluded=excluded(row,windows)
+        if is_excluded: excluded_sequences.append(int(row['sequence']))
+        if i in seam_breaks or row['segment_id']!=previous_segment or previous_excluded!=is_excluded:
             epoch+=1;start_ns=int(row['elapsed_ns'])
         contexts[int(row['sequence'])]=(epoch,start_ns)
-        previous_segment=row['segment_id']
+        previous_segment=row['segment_id'];previous_excluded=is_excluded
     save(output/'alignment-review.json',dict(
         reference_seam_break_sequences=[int(rows[i]['sequence']) for i in seam_breaks],
-        history_reset_at_each_break=True,source_termination=summary['reason']))
+        history_reset_at_each_break=True,source_termination=summary['reason'],exclusion_windows=windows,excluded_sequences=excluded_sequences))
     by_sequence={int(r['sequence']): g for r,g in zip(rows,geom)}
     speed=read(speed_file); cap=next(v for v in (10,20,40,80,120,160,200,240) if v>=max(speed['speed_kmh']))
     inputs=read_inputs(recording/'inputs.csv')
     if len(inputs)!=summary.get('input_samples'):raise ValueError('Input log tail missing')
     aligned=align(rows,inputs)
-    actions={}; frames=output/'frames.jsonl'; features=output/'features.jsonl'
+    actions={}; provenance={}; frames=output/'frames.jsonl'; features=output/'features.jsonl'
     with frames.open('x') as f:
         for row,prev,action in aligned:
             if should_stop(): raise InterruptedError('user_stop')
-            if not 2<=int(row['gear_raw'])<=9 or row['lap_valid']!='true': continue
+            # Preserve ACC neutral observations during automatic shifts, as in Rust execution.
+            if (excluded(row,windows) or any(seg==row['segment_id'] and action['read_start_ns']<=b and action['read_end_ns']>=a for seg,a,b in windows)) or not 1<=int(row['gear_raw'])<=9 or (not include_invalid and row['lap_valid']!='true'): continue
             seq=int(row['sequence']); g=by_sequence[seq]; t=int(row['elapsed_ns'])
             epoch,start_ns=contexts[seq]
             if prev['read_end_ns']<start_ns: continue
@@ -116,16 +127,18 @@ def prepare_recording(recording, prepared, speed_file, output, should_stop=lambd
                 speed_cap_kmh=cap,previous_axes=[prev['stick_x'],prev['throttle'],prev['brake']],previous_applied_ns=prev['read_end_ns'],gear_raw=int(row['gear_raw']))
             f.write(json.dumps(entry,allow_nan=False)+'\n')
             actions[seq]=[action['stick_x'],action['throttle'],action['brake']]
-    subprocess.run([str(policy_binary()),'features-gamepad',str(prepared),str(frames),str(features),str(speed_file)],check=True)
-    selected=[]; deadline=None; epoch=None
+            provenance[seq]=dict(action_read_start_ns=action['read_start_ns'],action_read_end_ns=action['read_end_ns'],previous_input_end_ns=prev['read_end_ns'],tracking_epoch=epoch,context_start_ns=start_ns,s_m=float(g[0]),lap_valid=row['lap_valid']=='true')
+    if feature_transform not in ('original','seam_bridge_15m_v1'): raise ValueError('Unknown feature transform')
+    feature_command='features-gamepad-seam' if feature_transform=='seam_bridge_15m_v1' else 'features-gamepad'
+    subprocess.run([str(policy_binary()),feature_command,str(prepared),str(frames),str(features),str(speed_file)],check=True)
+    selected=[]
+    offsets=augmentation['offsets_ms'] if augmentation else [0]
     with features.open() as f:
-        for line in f:
-            r=json.loads(line)
-            if r['features'] is None: continue
-            if epoch!=r['tracking_epoch']: epoch=r['tracking_epoch'];deadline=r['observation_ns']
-            if r['observation_ns']<deadline: continue
-            deadline+=((r['observation_ns']-deadline)//20_000_000+1)*20_000_000
-            selected.append(dict(features=r['features'],action=actions[r['sequence']],sequence=r['sequence'],observation_ns=r['observation_ns']))
+        for r,phases in phase_select((json.loads(line) for line in f),offsets):
+            item=dict(features=r['features'],action=actions[r['sequence']],sequence=r['sequence'],observation_ns=r['observation_ns'])
+            if augmentation:
+                item.update(provenance[r['sequence']],phases_ms=phases,weight=sample_weight(r['features'],item['action'],augmentation),exclusion_reason=None)
+            selected.append(item)
     if len(selected)<256: raise ValueError('Need at least 256 valid examples per demonstration')
     save(output/'examples.json',selected)
     return selected, r['feature_names'], profile
@@ -135,44 +148,67 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
     import torch
     from ModelTrainer.dataset import policy_binary
     c=tomllib.loads(Path(config).read_text(encoding='utf-8'))
-    correction_paths=c.get('corrections',[])
-    if c.get('require_corrections') and not correction_paths:raise ValueError('No completed human correction recordings selected yet')
-    if correction_paths and not c.get('parent_model'):raise ValueError('Correction learning requires the previous gamepad model')
-    recordings=[Path(p).resolve() for p in c['recordings']]
-    if len(recordings)!=3 or len(set(recordings))!=3: raise ValueError('Exactly three distinct recordings required, ordered 2 train then 1 validation')
-    paths=[p/n for p in recordings for n in ('metadata.json','summary.json','telemetry.csv','inputs.csv','controls.snapshot.json','assists.snapshot.json')]
-    # Copies cannot manufacture an independent validation drive.
-    if len({digest(p/'telemetry.csv') for p in recordings})!=3: raise ValueError('Duplicate demonstrations')
-    paths += [Path(config),Path(c['prepared'])/'manifest.json',Path(c['speed_profile']),Path(__file__),policy_binary()]
-    inventory=hashes(paths)
-    out=new_folder(c.get('output_dir','reinforcement_runs'),'gamepad-imitation')
-    m=dict(schema_version=1,kind='gamepad_imitation',semantics=SEMANTICS,complete=False,input_sha256=inventory,
-           recordings=list(map(str,recordings)),split=['train','train','validation'],prepared=str(Path(c['prepared']).resolve()))
-    save(out/'manifest.json',m); on_progress(dict(phase='preparing',result_dir=str(out)))
+    fresh=c.get('fresh_teacher_runs',False) or c.get('lap_teacher_recordings',False) or c.get('session_teacher_recordings',False)
+    settings=lambda p:(p['input_sha256'][p['controls']],p['input_sha256'][p['assists']],p['steam_input_disabled'])
+    if fresh:
+        if c.get('parent_model') or c.get('corrections') or c.get('recordings'):
+            raise ValueError('Fresh training cannot mix parent weights or legacy demonstrations')
+        if c.get('session_teacher_recordings',False):
+            from .session_gamepad import prepare
+        elif c.get('lap_teacher_recordings',False):
+            from .lap_gamepad import prepare
+        else:
+            from .fresh_gamepad import prepare
+        training,validation,names,profiles,inventory,m=prepare(c,config)
+        out=new_folder(c.get('output_dir','reinforcement_runs'),'gamepad-imitation')
+        save(out/'manifest.json',m);on_progress(dict(phase='preparing',result_dir=str(out)))
+    else:
+        correction_paths=c.get('corrections',[])
+        if c.get('require_corrections') and not correction_paths:raise ValueError('No completed human correction recordings selected yet')
+        if correction_paths and not c.get('parent_model'):raise ValueError('Correction learning requires the previous gamepad model')
+        recordings=[Path(p).resolve() for p in c['recordings']]
+        if len(recordings)!=3 or len(set(recordings))!=3: raise ValueError('Exactly three distinct recordings required, ordered 2 train then 1 validation')
+        paths=[p/n for p in recordings for n in ('metadata.json','summary.json','telemetry.csv','inputs.csv','controls.snapshot.json','assists.snapshot.json')]
+        # Copies cannot manufacture an independent validation drive.
+        if len({digest(p/'telemetry.csv') for p in recordings})!=3: raise ValueError('Duplicate demonstrations')
+        paths += [Path(config),Path(c['prepared'])/'manifest.json',Path(c['speed_profile']),Path(__file__),policy_binary()]
+        inventory=hashes(paths)
+        out=new_folder(c.get('output_dir','reinforcement_runs'),'gamepad-imitation')
+        m=dict(schema_version=1,kind='gamepad_imitation',semantics=SEMANTICS,complete=False,input_sha256=inventory,
+               recordings=list(map(str,recordings)),split=['train','train','validation'],prepared=str(Path(c['prepared']).resolve()))
+        save(out/'manifest.json',m); on_progress(dict(phase='preparing',result_dir=str(out)))
     try:
-        sets=[]; profiles=[]
-        for i,p in enumerate(recordings):
-            d=out/f'demonstration-{i+1}'; d.mkdir()
-            rows,names,profile=prepare_recording(p,c['prepared'],c['speed_profile'],d,should_stop)
-            sets.append(rows);profiles.append(profile)
-        settings=lambda p:(p['input_sha256'][p['controls']],p['input_sha256'][p['assists']],p['steam_input_disabled'])
-        if len({settings(p) for p in profiles})!=1: raise ValueError('Teacher settings differ between demonstrations')
-        corrections=[];parent_network=None
-        if correction_paths:
-            from .corrections import load_corrections
-            parent=Path(c['parent_model']).resolve();pm=read(parent/'manifest.json')
-            verify_hashes(pm['output_sha256'],parent)
-            if not pm['complete'] or pm['semantics']!=SEMANTICS or pm['recordings']!=list(map(str,recordings)) or pm['controls_sha256']!=settings(profiles[0])[0] or pm['assists_sha256']!=settings(profiles[0])[1]:raise ValueError('Parent model/split/profile mismatch')
-            parent_network=read(parent/'model.json')
-            if parent_network['feature_names']!=names or parent_network['action_names']!=ACTION_NAMES:raise ValueError('Correction feature/action schema mismatch')
-            corrections,extra,counts=load_corrections(correction_paths,*settings(profiles[0])[:2])
-            inventory.update(extra);inventory.update(hashes([parent/'manifest.json',parent/'model.json',Path(__file__).with_name('corrections.py')]))
-            m.update(input_sha256=inventory,parent_model=str(parent),corrections=counts,normalization='frozen parent model',correction_label_semantics='steer-only mask [1,0,0]; full takeover mask [1,1,1]')
-            save(out/'manifest.json',m,replace=True);save(out/'correction-examples.json',corrections)
+        if fresh:
+            corrections=[];parent_network=None
+            save(out/'training-examples.json',training)
+            save(out/'validation-examples.json',validation)
+        else:
+            sets=[]; profiles=[]
+            for i,p in enumerate(recordings):
+                d=out/f'demonstration-{i+1}'; d.mkdir()
+                rows,names,profile=prepare_recording(p,c['prepared'],c['speed_profile'],d,should_stop)
+                sets.append(rows);profiles.append(profile)
+            settings=lambda p:(p['input_sha256'][p['controls']],p['input_sha256'][p['assists']],p['steam_input_disabled'])
+            if len({settings(p) for p in profiles})!=1: raise ValueError('Teacher settings differ between demonstrations')
+            corrections=[];parent_network=None
+            if correction_paths:
+                from .corrections import load_corrections
+                parent=Path(c['parent_model']).resolve();pm=read(parent/'manifest.json')
+                verify_hashes(pm['output_sha256'],parent)
+                if not pm['complete'] or pm['semantics']!=SEMANTICS or pm['recordings']!=list(map(str,recordings)) or pm['controls_sha256']!=settings(profiles[0])[0] or pm['assists_sha256']!=settings(profiles[0])[1]:raise ValueError('Parent model/split/profile mismatch')
+                parent_network=read(parent/'model.json')
+                if parent_network['feature_names']!=names or parent_network['action_names']!=ACTION_NAMES:raise ValueError('Correction feature/action schema mismatch')
+                corrections,extra,counts=load_corrections(correction_paths,*settings(profiles[0])[:2])
+                inventory.update(extra);inventory.update(hashes([parent/'manifest.json',parent/'model.json',Path(__file__).with_name('corrections.py')]))
+                m.update(input_sha256=inventory,parent_model=str(parent),corrections=counts,normalization='frozen parent model',correction_label_semantics='steer-only mask [1,0,0]; full takeover mask [1,1,1]')
+                save(out/'manifest.json',m,replace=True);save(out/'correction-examples.json',corrections)
         if should_stop():raise InterruptedError('user_stop')
         torch.set_num_threads(1);torch.manual_seed(42);np.random.seed(42)
-        training=sets[0]+sets[1]+corrections; validation=sets[2]
+        if not fresh:
+            training=sets[0]+sets[1]+corrections; validation=sets[2]
         raw=np.array([r['features'] for r in training],dtype=np.float32); mean=raw.mean(0);std=raw.std(0);std[std<1e-6]=1
+        if c.get('shared_normalization'):
+            shared=read(c['shared_normalization']);mean=np.array(shared['mean'],dtype=np.float32);std=np.array(shared['std'],dtype=np.float32)
         if parent_network is not None:
             mean=np.array(parent_network['mean'],dtype=np.float32);std=np.array(parent_network['std'],dtype=np.float32)
         if mean.shape!=(35,) or std.shape!=(35,) or not np.isfinite(mean).all() or not np.isfinite(std).all() or np.any(std<=0):raise ValueError('Invalid frozen normalization')
@@ -181,7 +217,25 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
         vx_raw=np.array([r['features'] for r in validation],dtype=np.float32)
         vx=torch.tensor((vx_raw-mean)/std);vy=torch.tensor([r['action'] for r in validation],dtype=torch.float32)
         if not torch.isfinite(x).all() or not torch.isfinite(vx).all(): raise ValueError('Nonfinite training observations')
+        excluded=[]
+        if c.get('exclude_previous_actions',False):
+            if not fresh:raise ValueError('Previous-action ablation requires fresh training')
+            excluded=[19,20,21]
+        if c.get('exclude_longitudinal_response',False):
+            if not fresh:raise ValueError('Response-feature ablation requires fresh training')
+            # Causal measurements, but strong proxies for a brake already applied.
+            # Keep current speed and path preview; do not require deceleration to brake.
+            excluded += [13,14,15,16,17,18,23]
+        if c.get('exclude_engine_state',False):
+            if not fresh:raise ValueError('Engine-state ablation requires fresh training')
+            excluded += [3,22]
+        if excluded:
+            x[:,excluded]=0;vx[:,excluded]=0
+            m['excluded_input_features']=[names[i] for i in excluded]
         network=torch.nn.Sequential(torch.nn.Linear(35,128),torch.nn.ReLU(),torch.nn.Linear(128,128),torch.nn.ReLU(),torch.nn.Linear(128,3))
+        if excluded:
+            with torch.no_grad():network[0].weight[:,excluded]=0
+
         if parent_network is not None:
             with torch.no_grad():
                 for i,layer in zip((0,2,4),parent_network['layers']):
@@ -190,12 +244,22 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
             z=network(a);return torch.cat((z[:,:1].tanh(),z[:,1:].sigmoid()),1)
         optimizer=torch.optim.Adam(network.parameters(),lr=.0003)
         rng=torch.Generator().manual_seed(42);best=float('inf');best_state=None;history=[];updates=0
+        noise_rng=torch.Generator().manual_seed(42)
+        weights=torch.tensor([r.get('weight',1.) for r in training],dtype=torch.double)
+        draws=c.get('epoch_samples',len(x))
+        initial_sha=__import__('hashlib').sha256(b''.join(v.detach().numpy().tobytes() for v in network.state_dict().values())).hexdigest()
         epochs=c.get('epochs',50)
         if type(epochs)!=int or not 1<=epochs<=50: raise ValueError('Epoch limit 1..50')
         for epoch in range(1,epochs+1):
-            for ids in torch.randperm(len(x),generator=rng).split(256):
+            indices=torch.multinomial(weights,draws,replacement=True,generator=rng) if c.get('weighted_sampling') else torch.randperm(len(x),generator=rng)
+            for ids in indices.split(256):
                 if should_stop(): raise InterruptedError('user_stop')
-                loss=masked_mse(predict(x[ids]),y[ids],masks[ids])
+                batch=x[ids]
+                if c.get('noise'):
+                    from .augmentation import noisy_features
+                    batch=(noisy_features(torch.tensor(raw[ids.numpy()]),noise_rng,c['noise'])-torch.tensor(mean))/torch.tensor(std)
+                    batch[:,excluded]=0
+                loss=masked_mse(predict(batch),y[ids],masks[ids])
                 if not torch.isfinite(loss): raise ValueError('Nonfinite loss')
                 optimizer.zero_grad();loss.backward();optimizer.step()
                 updates+=1
@@ -203,7 +267,7 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
             score=sum(errors)/3
             if score<best:
                 best=score;best_epoch=epoch;best_state=copy.deepcopy(network.state_dict())
-                torch.save(dict(semantics=SEMANTICS,model=best_state,optimizer=optimizer.state_dict(),epoch=epoch,torch_rng=torch.get_rng_state(),shuffle_rng=rng.get_state(),mean=mean,std=std),out/'best.tmp')
+                torch.save(dict(semantics=SEMANTICS,model=best_state,optimizer=optimizer.state_dict(),epoch=epoch,torch_rng=torch.get_rng_state(),shuffle_rng=rng.get_state(),noise_rng=noise_rng.get_state(),mean=mean,std=std),out/'best.tmp')
                 (out/'best.tmp').replace(out/'checkpoint.pt')
             history.append(dict(epoch=epoch,validation_mse=errors));on_progress(dict(phase='training',epoch=epoch,updates=updates,loss=float(loss.detach()),validation_mse=errors,result_dir=str(out)))
         if should_stop(): raise InterruptedError('user_stop')
@@ -219,7 +283,7 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
         error=float(abs(actual-expected).max())
         if not np.isfinite(actual).all() or error>1e-5: raise ValueError('Python/Rust parity failed')
         baseline=((vx_raw[:,19:22]-vy.numpy())**2).mean(0).tolist()
-        save(out/'summary.json',dict(semantics=SEMANTICS,best_epoch=best_epoch,training_examples=len(training),correction_examples=len(corrections),validation_examples=len(validation),validation_mse=history[best_epoch-1]['validation_mse'],persistence_mse=baseline,history=history,parity_max_error=error,live_performance_verified=False))
+        save(out/'summary.json',dict(semantics=SEMANTICS,best_epoch=best_epoch,optimizer_updates=updates,epoch_samples=draws,initial_weights_sha256=initial_sha,training_examples=len(training),correction_examples=len(corrections),validation_examples=len(validation),validation_mse=history[best_epoch-1]['validation_mse'],persistence_mse=baseline,history=history,parity_max_error=error,live_performance_verified=False))
         import shutil
         shutil.copyfile(c['speed_profile'],out/'speed-profile.json')
         m.update(controls_sha256=settings(profiles[0])[0],assists_sha256=settings(profiles[0])[1],parity_passed=True,prepared_sha256=digest(Path(c['prepared'])/'manifest.json'))
