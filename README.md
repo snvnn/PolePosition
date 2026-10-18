@@ -1,12 +1,23 @@
 # 폴포지션 (Pole Position)
 
-ACC 텔레메트리 기반 자율 레이싱 프로젝트. 기록·데이터셋 검토·기준 경로·상태 계산에 이어 **vJoy 차량 입력의 실제 보정·검증을 준비 중**입니다.
-차량 입력 소프트웨어와 자동 검사는 구현했으며 재부팅 후 장치·ACC 검증이 남아 있습니다. 자동 경로 추종과 모델 학습은 후속 단계입니다.
+ACC 텔레메트리 기반 자율 레이싱 프로젝트입니다. **2026-10-18 기준** 기록·데이터 검토·기준 경로·상태 계산, vJoy 저속 경로 추종과 PID 모방학습, GUI, 게임패드 교사 수집·모방학습·사람 교정, 수동 준비 기반 SAC 실행을 구현했습니다.
+
+저속 기준 제어의 한 바퀴와 SAC의 짧은 실제 제어·정차 후 학습·체크포인트 재개를 검증했습니다. 게임패드 자율 완주 성능, 같은 고정 모델의 3랩 평가, 자동 메뉴 초기화와 vJoy 장치 장애 대응은 남아 있습니다. 10월 17일 증강 실험은 후보를 선정하지 않았으며 실게임 비교 시험도 대기 중입니다.
+
+전체 안내는 [문서 목차](Docs/README.md), 최신 실행 조합은 [게임패드 모델과 설정](Docs/CurrentGamepadModels.md), 남은 개발 과제는 [개발 체크리스트](Docs/DevelopmentChecklist.md)를 참조하세요.
 
 ## 빌드 및 실행
 
 Windows x64, Rust 1.95.0 MSVC 빌드 도구, 검증용 Python 3.11 이상을 사용합니다.
 프로젝트 루트에서 실행하세요.
+
+GUI는 `.venv-training`에서 시작합니다. 학습 환경과 드라이버·로컬 자산 준비는 [환경 구성](Docs/EnvironmentSetup.md), 작업별 입력과 중지는 [GUI 실행 규약](Docs/TrainingControllerSpecification.md)에 정리했습니다.
+
+```powershell
+.\.venv-training\Scripts\python.exe -m TrainingController
+```
+
+게임패드 작업은 [수집과 교정 절차](Docs/GamepadOperationGuide.md)를 먼저 확인하세요. 기본 교정 설정의 60초는 현재 실행부가 거절하므로, [설정 대응표](Docs/CurrentGamepadModels.md)에서 허용 시간이 맞는 시험 설정을 선택합니다.
 
 ```powershell
 cd C:\Users\YoonHyeon\Desktop\accad
@@ -49,6 +60,7 @@ python -m unittest discover -s DrivingRecorder -p 'test_*.py' -v
 ```
 
 최초 빌드에는 의존성 다운로드가 필요하며 이후 --offline으로 검사할 수 있습니다.
+위 명령은 검사 방법입니다. 날짜별 통과 결과와 실게임 검증 범위는 [검증 기록](Docs/VerificationLog.md)을 참조하세요.
 
 - [개발 체크리스트](Docs/DevelopmentChecklist.md)
 - [기록 규약과 인터페이스](Docs/RecordingSpecification.md)
@@ -66,7 +78,7 @@ python -m unittest DatasetBuilder.test_builder DatasetBuilder.test_report -v
 
 출력은 `datasets/<고유 ID>/`입니다. `report.html`에서 결과를 확인하고 `manifest.json`의
 `complete`와 `split_complete`로 변환 완료와 분리 완료를 구분합니다.
-현재 출력은 최종 모델 입력이 아닙니다. 경로 모델과 상태 처리에서 사용하고 있으며 최종 학습 데이터 구성은 후속 단계입니다.
+현재 출력은 경로 모델과 상태 처리의 입력입니다. 모델별 학습 자료 준비는 별도 단계이며 [PID 학습 규약](Docs/ModelTrainingSpecification.md), [게임패드 학습 규약](Docs/GamepadTrainingSpecification.md), [강화학습 규약](Docs/TrainingEnvironmentSpecification.md)을 따릅니다.
 
 - [DatasetBuilder 규약](Docs/DatasetBuilderSpecification.md)
 - [DatasetBuilder 개발 기록](Docs/DatasetBuilderDevelopmentLog.md)
@@ -100,7 +112,7 @@ python -m unittest DatasetBuilder.test_builder DatasetBuilder.test_report Datase
 결과는 `track_models/<고유 ID>/`의 manifest.json, reference.csv, validation.json, report.html입니다.
 `from TrackModel.model import load_reference`로 완료·해시·기하 검사를 거쳐 읽을 수 있습니다.
 품질 검사에 실패하면 완료 처리하거나 차순위 랩으로 교체하지 않습니다.
-StateProcessor는 이 경로로 위치·횡오차·방향·곡률을 계산합니다. 실제 차량 추종은 후속 단계입니다.
+StateProcessor는 이 경로로 위치·횡오차·방향·곡률을 계산합니다. 이 경로를 사용한 저속 기준 제어의 한 바퀴 결과는 [고저차 분석](Docs/OneLapTerrainReview.md)에 기록했습니다.
 
 - [TrackModel 규약과 Python 사용법](Docs/TrackModelSpecification.md)
 - [TrackModel 개발·검증 기록](Docs/TrackModelDevelopmentLog.md)
@@ -123,4 +135,14 @@ target/release/poleposition-actuator.exe self-test --fault producer-kill
 cargo run --release --locked --offline -p poleposition-actuator -- test --scenario stationary --prepared state_runs/prepared-1790679300781499500-3e604d8c --profile input_profiles/<확정보정ID>/calibration.json
 ```
 
-신규 모듈은 `VirtualJoyStick`과 `ModelAndActuator`입니다. 실행 결과는 `actuator_runs/`, 설정 백업과 보정은 `input_profiles/`에 저장합니다. 현재 소프트웨어 회귀 결과는 Rust 74개·Python 94개 통과이며 실게임 입력 완료와 구분합니다.
+휠 입력은 `VirtualJoyStick`, 게임패드 입력은 `GamepadIO`, 실제 제어 감시는 `ModelAndActuator`가 담당합니다. 실행 결과는 `actuator_runs/`, 설정 백업과 보정은 `input_profiles/`에 저장합니다. Rust 74개·Python 94개 통과는 2026-09-29 차량 입력 개발 당시의 회귀 결과입니다. 이후 검증은 [검증 기록](Docs/VerificationLog.md)에서 날짜와 범위를 구분합니다.
+
+## 게임패드 학습과 실험
+
+교사 기록 → 자료 선별 → 모방학습 → 짧은 모델 시험 → 사람 교정 → 재학습 순서로 진행합니다. 연속 랩·세션 단위 학습과 증강 후보는 별도 설정을 사용합니다.
+
+- [수집과 교정 절차](Docs/GamepadOperationGuide.md)
+- [게임패드 학습과 특징 규약](Docs/GamepadTrainingSpecification.md)
+- [모델과 프리셋 대응표](Docs/CurrentGamepadModels.md)
+- [실험 비교와 실패 분석](Docs/GamepadExperimentReview.md)
+- [기록 선별과 보관](Docs/DataArchiveGuide.md)

@@ -2,11 +2,13 @@
 
 작성: 2026-09-29 · 소프트웨어 0.1.0 · Windows 10 x64 / Rust 1.95 / Python 3.11
 
+현재 안내 갱신: 2026-10-18. 아래 vJoy 절차와 날짜별 시험은 보존한다. 게임패드의 현재 입력 분리·재부팅 복구·교사 기록·RB 교정·필터·설정 복원은 [게임패드 운영 안내](GamepadOperationGuide.md), 실행할 모델과 시간은 [설정 대응표](CurrentGamepadModels.md)를 따른다.
+
 ## 범위와 현재 상태
 
 Rust 명령을 vJoy 장치 1번의 X(조향), Y(가속), Z(브레이크)에 전달한다. 명령 생성 자식 프로세스와 장치를 단독 소유하는 감시 프로세스를 분리한다. 실제 시험은 별도 휠 프리셋, Xbox 패드 분리·전원 끔, BMW M4 GT3 / Brands Hatch / 단독 세션 / 자동 변속 조건이다.
 
-이번 구현은 정차와 20km/h 이하의 짧은 입력 시험까지다. 경로 추종·목표 속도·Pure Pursuit·PID·모델 학습은 포함하지 않는다. StateProcessor의 `ready`는 여러 시작 조건 중 하나이며 제어 허가 자체가 아니다.
+이 문서의 기본 vJoy 입력 규약은 정차와 20km/h 이하의 짧은 입력 시험 범위다. 이후 경로 추종·Pure Pursuit·PID와 모델 학습은 [기준 제어](BaselineControllerSpecification.md), [PID 학습](ModelTrainingSpecification.md), [게임패드 학습](GamepadTrainingSpecification.md) 규약에 둔다. StateProcessor의 `ready`는 여러 시작 조건 중 하나이며 제어 허가 자체가 아니다.
 
 2026-09-29 재부팅과 vJoy 2.2.2.0 인식, 실제 장치 확보·중립 전송·반환, ACC 설정 화면의 세 축 지정과 해제를 확인했다. 초기값 변경 후 22:23 재부팅에서 첫 입력 전 SDK 위치 `[16384,1,1]`도 확인했다. 페달 1은 드라이버의 0% 초기화 수식에 따른 정수 한 단계다. 새 Windows 관측 클라이언트의 중간값을 실제 드라이버 초기값으로 해석하지 않는다. 이후 정차·저속 반응, F8, 일시정지, 명령 생성자 종료/정지와 ACC 관측 만료를 실제 검증했다. 감시자 강제 종료에서는 마지막 제동값이 유지되는 한계를 확인했다. 기존 패드 설정은 원본 바이트로 복원했지만 Xbox USB 입력이 일시 회복 후 다시 끊겨 **패드 복원 검증은 미완료**다. 실제 전면 해제·드라이버 장애 주입도 남아 있다. 근거는 [실게임 검증 집계](../actuator_runs/live-verification-20260929.json)와 [개발 기록](VehicleInputDevelopmentLog.md)에 남긴다.
 
@@ -170,6 +172,8 @@ target/release/poleposition-actuator.exe self-test --fault telemetry-stale
 사용자 요청으로 추가한 `demo` 명령은 [BaselineController 규약](BaselineControllerSpecification.md)을 따른다. 기존 F7/F8·감시·저장 큐를 재사용하고 `controller.csv`와 경로 상태 열을 추가한다. 기존 시나리오는 그대로 유지한다. 첫 데모 결과는 [개발 기록](BaselineControllerDevelopmentLog.md)에 따로 남기며 단계 5의 장치 장애 미해결 항목을 완료로 바꾸지 않는다.
 
 ## 별도 게임패드 경로 (2026-10-06)
+
+이 절의 3회 교사 분리와 핫랩 시작 조건은 10월 6일 초기 방식이다. 현재는 별도 교정 누적·새 가중치 학습·완전한 랩 및 세션 단위 학습이 있으며 [게임패드 학습 규약](GamepadTrainingSpecification.md)에서 설정별 적용 범위를 구분한다. 현재 교정 경로의 거리·방향 중지 해제 옵션과 기어/버튼·필터 규칙은 [운영 안내](GamepadOperationGuide.md)를 따른다.
 
 `GamepadIO`는 XInput 원시 수집과 ViGEmClient 직접 Xbox 360 출력을 제공한다. vJoy로 변환하지 않는다. 공통 `Device` 인터페이스는 종류, 연결 확인, 전송 결과, 중립화, 해제를 노출하며 기존 vJoy 구현을 유지한다. 새 모델 태그는 `gamepad_v1`, 행동 순서는 `[stick_x, rt, lt]`다. 정수 스틱의 음수는 32768, 양수는 32767로 나누며 트리거는 255로 나눈다. 역변환은 반올림하며 감마·데드존·휠 배율·페달 상호 배제 처리를 추가하지 않는다.
 

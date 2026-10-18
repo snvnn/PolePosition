@@ -1,5 +1,7 @@
 # 저속 PID 교사 모방 모델 규약 v0.1.0
 
+문서 연결 갱신: 2026-10-18. 이 문서는 기존 PID v1의 적용 범위를 유지한다. 사람의 원시 세 행동과 교정·새 가중치·랩·세션·증강 학습은 [게임패드 학습 규약](GamepadTrainingSpecification.md), 35차원 두 행동 SAC는 [강화학습 규약](TrainingEnvironmentSpecification.md)을 따른다. 버전별 특징 순서·단위·기어·출발선 변환은 [공통 비교표](GamepadTrainingSpecification.md#모델-버전과-행동)에 정리했다.
+
 ## 범위와 실행 환경
 
 BMW M4 GT3 / Brands Hatch, 목표 10km/h에서 기존 PID의 **요청 가속·브레이크**를 모방한다. Pure Pursuit 조향, 출발, 최종 정지, vJoy 감시는 기존 Rust 모듈이 담당한다. 사람 주행·강화학습·온라인 갱신·고속 주행·모델 한 바퀴 완주는 포함하지 않는다. 장치 장애 대응 보완은 별도 과제로 유지한다.

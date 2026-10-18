@@ -1,6 +1,10 @@
 # GUI 컨트롤러 개발 기록
 
-## 현재 작업 범위 — 2026-10-03 강화학습 구현 재개
+## 현재 작업 범위 2026년 10월 18일
+
+수동 준비/F7 기반 SAC의 실제 수집·정차 후 갱신·재개 연결을 확인했고, 이후 게임패드 교사 수집·교정·새 자료 및 세션 학습·증강 비교를 추가했다. 최신 실행 설정은 [모델 표](CurrentGamepadModels.md), 실제 시험과 실패 분석은 [실험 검토](GamepadExperimentReview.md)에 둔다. 자동 메뉴 초기화·고정 모델 3랩·자율 완주 성능과 장치 장애 대응은 미완료다.
+
+## 2026년 10월 3일 당시 강화학습 구현 재개 범위
 
 사용자가 `TrainingControllerPlan.md`의 강화학습 계획 구현을 요청하고 기존 Python GUI에서 학습한다고 명시했다.
 따라서 아래 과거의 컨트롤러 한정 범위를 넘어 v2 자료 준비·사전학습을 추가했다. 실제 자동 주행 학습은 미완료다.
@@ -480,3 +484,132 @@ F7 대기 표시가 나오면 ACC 전면에서 F7을 누른다. F8은 즉시 중
 자동 검사: TrainingEnvironment 50개, actuator/policy Rust 단위 검사 51개 통과. 기존 actuator 통합 검사 9개도 통과했다. GUI 묶음은 47개 중 44개 통과·3개 명시적 전역 단축키 검사는 생략했다. 제한된 환경의 Tcl 초기화 오류는 데스크톱 환경에서 같은 GUI 검사를 재실행해 해결했으며, 구형 강화학습 비활성화 기대값을 새 동작에 맞춰 갱신했다. 기존 shadow artifact는 exporter 바이너리 재빌드 후 보관된 parity를 현재 Rust로 다시 검증하도록 보완했다.
 
 추가 GUI 계약 검사 2개(온라인 재개의 폴더/워커 연결, 회차·보상 진행 메시지 검증)와 기존 워커 실패 검사 3개도 통과했다. 마지막 확인 시 주행 actuator 프로세스는 종료되어 있었다.
+
+
+## 2026-10-08 사람 교정 주행 재개 및 장치 분리 검증
+
+- 교정 제어 Rust 검사 50개 통과(실기록 replay 1개는 입력 자료 지정이 필요한 ignored 검사), Python 관련 검사 7개 통과. 실행 파일을 새로 빌드했다.
+- ACC 종료와 실제 Xbox 패드 연결을 확인하고 장치 목록 및 controls/assists 사본을 로컬에 백업했다.
+- 공식 HidHide 1.5.230 설치 파일의 서명과 SHA256을 재확인했다. 최초 설치 인수 오류, 이후 관리자 권한 오류 1925를 기록했다. 사용자에게 각각 재시도·관리자 권한 승인을 받은 뒤 설치가 종료 코드 0으로 완료됐다. 설치 드라이버 파일 버전은 1.4.181.0이다.
+- 실제 패드의 HID 및 XboxComposite 부모만 숨기고 교정 실행 파일을 허용했다. 재연결 후 허용 실행 파일에는 실제 패드 슬롯 0이 보이고 독립 복제 실행 파일에는 패드가 보이지 않음을 확인했다.
+- ACC 종료 시 PowerShell 경로/프로세스 조회 실패를 수정했다. 실제·가상 패드 동시 가시성과 해제를 검사하는 --intervention-bench 명령을 추가했다.
+- 동시 검사에서는 가상 패드의 초기 사용자 번호와 실제 패드 번호 충돌로 실패했다. 초기 번호 확정을 최대 3초 기다리는 처리를 빌드했지만 실제 재검사는 아직 하지 않았다. 실패 후 가상 장치가 남아 있으며 설치 로그에도 재부팅 대기가 있어 Windows 재부팅 후 재검사한다.
+- HidHide 분리의 실제 패드 단독 검증만 통과했다. 가상 패드 동시 검사·인게임 교정·교정 데이터 재학습은 미통과/미실행이다. 다음 단계는 재부팅 후 독립 프로브, 동시 검사, 사용자 F7을 통한 5초 교정 주행 순서다.
+- 로컬 증거: input_profiles/hidhide-install-20261008 및 input_profiles/gamepad/intervention-status.json. GUI 교정 프리셋: TrainingController/gamepad-intervention-preset.json.
+
+
+### 재부팅 후 동시 장치 검사
+
+- Windows 부팅 시각 2026-10-08 22:51:54 확인. 남아 있던 가상 장치는 사라졌다.
+- 숨김이 켜진 채 부팅했을 때 실제 Xbox 입력 하위 장치가 생성되지 않았다. 사용자 승인 후 숨김 해제·USB 재연결·숨김 재활성화로 복구했다. 재부팅 시 자동 복구는 아직 미구현이다.
+- ViGEm의 사용자 번호가 실제 패드 번호 0으로 남아 단순 대기 수정도 실패했다. 가상 장치 생성 전후의 유일한 새 XInput 슬롯을 선택하고 STOP→NEUTRAL 응답으로 검증하도록 수정했다.
+- intervention-bench-20261008-slot-discovery.json: 실제 슬롯 0, 가상 슬롯 1, 일반 프로그램에는 가상 슬롯만 노출, 중립화·해제 후 일반 프로그램 슬롯 없음. 동시 검사 passed=true. 인게임 성능은 아직 검증 전이다.
+- 수정 후 Rust 검사 50개 통과, 실기록 지정이 필요한 1개 ignored. GUI 한 창을 교정 프리셋으로 열었다.
+- ACC가 controls.json의 commandDevices 배열 순서만 변경해 기존 전체 파일 해시 검증에서 준비가 차단됐다. 모든 설정 값 동일 여부를 검사하고 변경 파일을 백업한 뒤 검증된 원래 순서로 복원했다.
+
+
+### GUI 실행에서 HidHideCLI 응답 대기 문제 수정
+
+- 실제 실패 기록 isolation-last-error.json에서 preflight=false, virtual_slot=1, TimeoutExpired 1초를 확인했다.
+- 동일 CLI를 열린 stdin 파이프로 실행하면 2초 내 종료하지 않았고, DEVNULL로 실행하면 0.031초에 종료했다. GUI→Rust→Python 제어 파이프를 CLI가 상속해 스크립트 입력 EOF를 기다린 것이 재현된 원인이다.
+- 읽기 전용 하위 프로세스의 stdin을 DEVNULL로 고정했다. 주행 중 1초 명령 제한과 기존 감시 만료 조건은 유지했다.
+- 관련 검사 2개 통과. GUI와 같은 ManagedProcess 경로로 6초 대기 검사: 진행 이벤트 16개 모두 isolation_ok=true, 정책 주행 0개, user_stop 후 released=true 및 관리 프로세스 회수 확인. 증거: input_profiles/gamepad/managed-isolation-regression.json 및 gamepad-1791468412652405600-3400.
+
+
+### controls.json 장치 순서 변경 대응
+
+- 첫 5초 교정 모드 진단 gamepad-1791468469173273700-2328 통과: 정책 251개, 15.60m, 정상 정차·해제, 입력 지연 최대 2.0835ms. LB/RB 기록 0개이므로 교정 학습은 하지 않았다.
+- ACC가 commandDevices 순서를 다시 저장해 준비가 반복 차단됐다. 교정 전용 intervention-profile.json에 기존 교사 해시와 일치하는 controls_reference를 연결했다. 원본 해시를 확인한 뒤 JSON의 외부 commandDevices 배열만 정렬해 비교한다. 그 외 값·내부 축/버튼 배열 순서·장치 추가/삭제는 변경으로 차단한다.
+- 모델 및 기존 장치 검증의 교사 해시는 보존했다. 실행 manifest에 controls_actual_sha256와 controls_teacher_sha256를 함께 기록한다. 기존 교사 수집 프로필은 그대로다.
+- 순서 변경 허용, 감마/축 순서/장치 삭제 거부, 참조 변조 거부 검사 포함 Rust gamepad 검사 4개 통과. 실제 ACC 파일을 복원하지 않고 ManagedProcess 경로 준비 검사 통과: profile_match/isolation_ok true, 정책 주행 0개, user_stop 및 프로세스 회수. 증거 controls-order-regression.json.
+
+
+### 첫 실제 조향 교정 학습
+
+- gamepad-1791468865438118400-5340: 5초, 15.66m, 정책 250개 중 human_steer 153개, 정상 정차·해제·전달 검사 통과. 20ms 표본 및 인과성 검증 후 교정 100개 확보.
+- 기존 학습 2,959개와 조향 마스크 [1,0,0] 교정 100개를 함께 학습했다. 세 번째 교사 주행 1,396개를 독립 검증으로 유지하고 이전 모델 정규화를 고정했다.
+- 새 모델 gamepad-imitation-1791469772793871000-7f5e37e8: 50 epoch 중 19 선택, 검증 MSE [0.003503444, 0.001192016, 0.002242443], 이전 평균 대비 약 14.48% 감소. 이전 입력 유지 기준의 MSE는 여전히 더 작다. 실제 주행 성능 향상으로 해석하지 않는다.
+- Python/Rust 최대 오차 5.0773e-7, 출력 해시 검증 통과. 모델 해시 cba01c7045354317b825fe785ec5a4530b2643f6779cd95842b1acef825ed96f.
+- GamepadIO/intervention.toml을 새 모델의 5초 시험으로 연결했다. 실제 새 모델 비교 주행은 사용자 F7 대기 중이다. 원본 모델과 교사 기록은 보존했다.
+
+
+### 2026-10-08: second corrective imitation candidate
+
+Combined 203 steering-only and 147 full-action corrections with 2,959 original training examples; retained 1,396 independent validation examples. Trained 50 epochs, selected epoch 15. Parent normalization unchanged; output hashes and finite parameters verified. Python/Rust maximum error 4.578670501631521e-7. Validation MSE (steer, throttle, brake): [0.003384996671229601, 0.0011109974002465606, 0.002499569673091173]. Aggregate error changed by 0.831% versus parent (regression). Previous-input persistence baseline remains better. Configured this candidate only for a 5-second autonomous-start diagnostic; no claim of improved live performance. Parent model preserved. Candidate: `reinforcement_runs/gamepad-imitation-1791470302688822500-4eded3ee`. Review: `input_profiles/gamepad/second-correction-model-review.json`.
+
+
+### 2026-10-09: automatic-shift neutral command starvation fix
+
+Latest teacher run gamepad-1791471142519036600-13824 ended command_expired. Recorded observations and sends continued at about 100 Hz; ACC gear_raw became 1 (neutral) during automatic downshift, while live feature generation required >=2. Thus policy generation stopped and the unchanged 80 ms lease expired. The earlier scheduling-delay diagnosis was incorrect. Gamepad features now preserve neutral=1; wheel v2 remains forward-only. Live gamepad and teacher preprocessing accept neutral; F7 explicitly requires a forward gear. No stale observation cloning, gear substitution, lease extension, or model-weight update.
+
+Regression: a synthetic 110 ms neutral shift retains fresh features; invalid/reverse gear rejected and wheel behavior unchanged. Policy feature tests 4 passed; actuator tests 47 passed, 1 optional historical replay ignored; gamepad Python tests 6 passed. Actual failing recording replay produced valid neutral features and finite current-model predictions for all 25 pre-stop neutral observations. Evidence: input_profiles/gamepad/neutral-shift-replay-1791471504363645600/summary.json. Release controller and policy rebuilt; isolation probe and pinned executable hashes refreshed. Real driving repeat remains required; the original failed run remains excluded from automatic training.
+
+
+### 2026-10-11: RB toggle takeover
+
+RB rising edge toggles full human authority; release or held/repeated packets do not toggle. LB remains hold-to-steer, Back/F8 and guardian braking retain priority. Waiting/new trials clear takeover; normal timed braking permits human steering with mandatory brake. Raw 100 Hz input and policy records include full_toggle; rb_toggle_v1 manifest distinguishes old hold recordings. Correction loader reconstructs toggle from raw button edges and validates policy state before labeling released-button human control. GUI instructions updated. Tests: gamepad 5, actuator 47 (1 historical replay ignored), correction labels 4 passed. Release rebuilt, isolation probe and hash pins updated. Live toggle trial pending.
+
+
+### 2026-10-11: third corrective imitation model
+
+Validated RB toggle trial gamepad-1791709262764460700-13392: 10-second timed stop, 500 policies, 467 human decisions (462 with RB released), 14 neutral-gear predictions, 329 eligible full-action labels. Combined six verified sessions into 804 corrections. Trained from second candidate for 50 epochs, selected epoch 33: 4087 training and 1507 independent validation examples, now including real neutral-gear observations. Parent evaluated on this same updated validation set: MSE [0.0034318229,0.0013805102,0.0023479557]; candidate [0.0031590164,0.0011229550,0.0027519285]. Aggregate decreased 1.765%, braking error increased; persistence baseline remains better. Frozen normalization preserved, output hashes verified, Python/Rust parity max 3.9206405638703146e-7. Candidate reinforcement_runs/gamepad-imitation-1791709374419774300-2b93bd52 configured for 10-second autonomous diagnostic. Live performance unverified, original models preserved. Review: input_profiles/gamepad/third-correction-model-review.json.
+
+
+### 2026-10-11: disable reference-line departure stops on request
+
+Added default-false disable_path_departure_stop to gamepad config and enabled it for current intervention collection. Bypasses reference distance and heading gates (including preparation); continues recording errors. Other profiles retain previous behavior. Observation validity/freshness, tracker integrity, invalid-lap, emergency stop, device faults and 30-second collection limit remain. Baseline gate regression passed; actuator 47 tests passed, 1 optional replay ignored. Release rebuilt and isolation probe/hash pins refreshed. Live collection verification pending.
+
+
+### 2026-10-11: physical gear-button passthrough with HidHide
+
+Intervention controller reads GearUp/GearDown bindings from verified ACC controls and forwards only those face buttons through ViGEm during Waiting/Running while ACC is foreground and physical input is connected. Current bindings A/up and X/down (mask 0x5000). RB/LB/Back and menu buttons remain excluded. Stop/cancel/fault and neutralization clear buttons. Release and press bits preserved, no synthetic repeat. Manifest pins shift_button_mask; existing sent reports contain actual button bits. GUI instructions updated. Tests: 7 gamepad and 47 actuator passed (1 optional historical replay ignored); release and isolation executable pins updated. No ACC/HidHide settings changed. Live shifting confirmation pending; virtual pad exists only after preparation, so standalone closed/finished GUI cannot relay shifts.
+
+
+### 2026-10-11: fresh hotlap imitation training
+
+Six successful 30-second human-toggle runs start stopped in first gear within 0.31 m of each other. First five train (5330 full-human labels), last validation (1064). Added explicit fresh_teacher_runs training path: no old demonstrations or parent weights, seed42 random initialization and training-only normalization. Raw teacher labels and causal features verified; partial takeover/model labels excluded; duplicate runs/content rejected. Existing geometry/speed reference retained as observation context, not action labels. Legacy incremental training retained. New report path reads held-out intervention log instead of assuming legacy CSV.
+
+50 epochs, selected 49. Model reinforcement_runs/gamepad-imitation-1791710760009424500-9fb5a510, SHA b09074fd4121e02df6c4dff1162c4ef63feef4ae811c9d7963c106fa627d23c5. Same held-out MSE old [0.0029418091,0.0007444124,0.0015267677], new [0.0016997106,0.0009059297,0.0003319292]: aggregate 43.649% lower, throttle worse. Persistence baseline remains better, real closed-loop performance unverified. Python/Rust parity max6.882389450013626e-7, output inventory verified. Ten existing Python tests and real split/overlap checks passed. Configured 5-second autonomous diagnostic, RB fallback, reference departure stop stays disabled as requested. Old models preserved.
+
+
+### 2026-10-11: steering divergence diagnosis
+
+Compared autonomous gamepad-1791711092477665800-16072 with all six teachers at matched path positions. s3112: teacher median stick .003, range [-.014,.043], model -.404; speeds12.9/13.3kmh. s3282: teacher lateral .851m vs model -2.152m. Divergence starts at departure, before corner braking. Offline replacement of previous stick changes departure model prediction -.441 to -.0203; previous RT substitution only -.4395. Supports previous-stick shortcut plus subsequent state drift, not transmission failure.
+
+Added fresh-only exclude_previous_actions ablation: normalized input columns19:22 and first-layer weights zeroed, exported/checkpoint behavior consistent; same whole-run split. Candidate gamepad-imitation-1791711259498261400-7fea48d4 parity passed4.90e-7, but validation error ratio 8.177621805373317. Candidate NOT deployed. Ten existing Python tests passed. Evidence input_profiles/gamepad/steering-divergence-20261011/analysis.json. Full removal is not a validated fix; next work should test regularization and targeted stable recovery demonstrations.
+
+
+### 2026-10-11: closure-feature correction and model-only LPF A/B
+
+At19.8196s (s3879.325 on length3882.316m reference), raw curvature jumps -.03147 to -.19051/m, heading-error derivative4.66 to9.82rad/s. Reference closure has sharp heading/curvature kink around final/first5m; teachers all steer positive .089..355 near location while model flips+.367 to-.600. Car was already displaced laterally3.25m, so closure correction alone is not a proven recovery solution.
+
+Versioned seam_bridge_15m_v1 interpolates reference heading with Hermite endpoint headings/curvatures across ±15m closure and replaces derived heading/rate and all curvature lookaheads. Projection/true observations/raw recordings remain unchanged. Fresh teacher features rebuilt causally through same Rust extractor, whole-run split unchanged; previous-action exclusion retained. Candidate gamepad-imitation-1791712462218386600-1be3fa19 selected epoch50, parity4.128e-7. Aggregate held-out MSE8.8% lower than current no-history model, steering lower but pedal errors slightly higher.
+
+Model-only first-order LPF alpha=1-exp(-dt/tau), tau30ms, full steering range unchanged; human authority bypasses and updates state, stopping/emergency commands bypass, raw policy and command_action logged separately. 90% step response69.1ms (not a guaranteed vehicle latency). Compared One Euro adaptive method (https://gery.casiez.net/publications/CHI2012-casiez.pdf): signal-speed adaptation trades jitter for lag, but abrupt artifacts can open its cutoff. Start with fixed time constant for interpretable A/B.
+
+Offline replay of same observations: event steering step .96693 old, .10925 corrected model, .04596 corrected+LPF. Max step across run .96693/.54527/.26322. This is not a simulated closed-loop trajectory. Tests9 gamepad,5 feature,47 actuator and10 Python passed;1 historical actuator replay ignored. Release/probe hashes refreshed. A/B configs differ only tau0/30; existing GUI selects A5 first. Same model/settings/start for each pair,5 then10 then30 seconds. Live tests pending. Evidence input_profiles/gamepad/seam-smoothing-review and lpf-ab-plan.json.
+
+## 2026년 10월 11일 후속 시험과 분석 결과 보완
+
+2026-10-18에 당시 저장 결과를 대조해 보완했다. 출발선 보정 모델의 LPF A/B는 5초 양쪽 정상 종료·정차·해제를 확인했지만 10초 양쪽과 30초는 전체 판정에 실패했다. 앞선 실험 준비 시점의 `Live tests pending`은 그 시점의 기록이며, 이후 결과는 [실제 시험 표](GamepadExperimentReview.md#조향-필터-실제-시험)를 따른다. Running 정책 제어권은 여섯 회 모두 model이었다. 10초 양쪽과 30초 A는 정차 전 추적 변경, 30초 B는 무효 랩이며 장치 해제는 모두 확인했다.
+
+완전한 랩 8개·보류 랩 1개 학습, 핫랩 교사 5회 혼합, 제동 반응 및 엔진 상태 특징 제외 실험을 추가했다. 혼합 모델은 출발 관측과 랩 검증의 일부 오차를 줄였지만 15초 실제 실행은 정차 전 추적 변경으로 실패했다. 제동 특징 제외 후보는 고정 관측 재생의 제동 시점은 앞당겼으나 보류 자료 MSE가 악화됐으며 기존 모델·설정을 보존했다. 정답 시각 감사, 데이터 분리, 후보별 수치와 해석은 [실험 검토](GamepadExperimentReview.md)에 정리했다.
+
+## 2026년 10월 17일 교사 세션 선별과 새 모델
+
+- 당일 교사 기록 중 완전한 랩이 무효 랩 포함 2개 이하인 7개 세션을 별도 보관했다. 검증 세션은 원본을 보관하고 첫 유효 6랩 끝점까지 유지했다. train 4세션·validation 1세션과 해시·경계·복원 위치는 [자료 보관](DataArchiveGuide.md)에 기록했다.
+- 선별 후 유지 시간 5,234.9400296초, 완전 랩 57·유효 랩 34다. 이 합계에는 접근·부분 구간도 포함된다. 자료의 무효 관측을 자동으로 성공 복구로 취급하지 않는다.
+- `session-teacher-20261017.toml`로 독립 세션 검증 기반 새 가중치 모델 `gamepad-imitation-1792231181059399600-43934c30`을 생성했다. train 233,320개·validation 27,514개, 최선 epoch 36, Python/Rust 최대 차이 약 5.439e-7이다.
+- 5초 실제 시험은 정상 종료·정차·해제를 확인했다. 15초와 30초 설정의 실행은 `tracking_changed_before_stop`, `passed=false`, `stop_confirmed=false`, `released=true`다. 15초 전달 검사 통과와 전체 주행 실패를 구분한다. [시험과 비교 결과](GamepadExperimentReview.md#10월-17일-세션-자료와-실제-시험).
+
+## 2026년 10월 17일 증강 비교와 제외 경계 수정
+
+- 기존 모델을 보존한 채 A 원자료 선별, B 0/10ms 실제 표본 위상 확장, C 제한된 횡오차·heading 잡음을 비교했다. A/B/C 모두 같은 중요 구간 가중 추출·A 정규화·초기 가중치·갱신 예산을 사용했다.
+- 최초 실험은 정답 읽기 구간이 제외 경계와 겹치는 3개 표본을 발견해 선정 부적격으로 표시했다. 경계 수정 후 `augmentation-comparison-1792233044576944100-923b5038`을 기준 결과로 생성했다.
+- 수정 후 A 229,155개·B/C 401,369개, 동일 validation 27,514개, 각각 optimizer 갱신 44,800회다. 저장된 후검사는 겹침 0·validation 동일을 확인했다.
+- 당시 검증 집계는 검사 16개, 출력·원자료 해시, 공통 정규화·초기 가중치·갱신 수, 시험 프리셋 12개 확인이다. 이는 2026-10-18 문서 보완 중 새로 수행한 테스트가 아니다.
+- 후보 순위는 C→B→A지만 전체 평균 MSE가 모두 기존보다 커 `selected_candidate=null`이다. 실제 시험은 `live_tests_pending=true`를 유지한다. 기존/A/B/C의 5·15·30초 프리셋을 준비했으며 모델은 자동 교체하지 않았다. [조건과 결과](GamepadExperimentReview.md#증강-조건과-제외-구간-경계-수정).
+
+## 2026년 10월 18일 문서 현재 안내 정리
+
+README·개발 체크리스트·GUI 사용법을 현재 구현에 맞췄다. 게임패드 운영·모델과 설정·학습 특징·실험 분석·자료 보관·환경 구성과 [문서 목차](README.md)를 추가했다. `intervention.toml` 및 `intervention-lpf-a-60s.toml`의 60초는 현 실행부가 거절하는 설정으로 명시했다. 문서 보완은 코드·실행 설정·드라이버·데이터·모델을 변경하거나 새 실게임 시험을 수행한 작업이 아니다.

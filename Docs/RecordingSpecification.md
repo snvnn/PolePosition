@@ -2,9 +2,11 @@
 
 작성: 2026-09-29. 실제 저장 schema_version은 1이다.
 
+관리 실행과 원시 게임패드 형식 갱신: 2026-10-18. 기본 텔레메트리 schema_version 1을 유지하며 게임패드 기록은 아래 추가 파일과 metadata로 식별한다.
+
 ## 모듈과 실행
 
-루트 Cargo workspace에 TelemetryDataServer와 DrivingRecorder를 등록한다.
+수집 경로는 루트 Cargo workspace의 TelemetryDataServer와 DrivingRecorder를 사용한다.
 전자는 Rust 라이브러리와 10초 진단 실행 파일, 후자는 기록 실행 파일이다.
 두 모듈은 직접 함수 호출로 연결하며 네트워크 서버나 차량 입력 기능은 없다.
 Rust 1.95.0과 Cargo.lock을 사용한다. Python 검증기는 3.11 표준 라이브러리만 사용한다.
@@ -117,3 +119,42 @@ first_goal_recording_pass에는 온전한 랩, 실제 샘플, 형식 통과, 행
 온전한 랩은 같은 segment의 두 연속 lap_boundary 사이에서만 센다. valid_complete_laps는
 그 구간의 lap_valid를 별도 집계한다. 무효 랩을 유효한 학습 랩이라고 보고하지 않는다.
 기록 통과와 미실행→재실행 등 전체 연결 시험 통과는 별개다.
+
+## 관리 실행과 게임패드 선택
+
+관리 실행은 `--managed --config FILE --duration SECONDS`를 받는다. GUI와 stdin/stdout의 UTF-8 JSON Lines 생존 신호·중지를 주고받으며 [관리 채널](TrainingControllerSpecification.md#관리-채널-v1)을 따른다. 게임패드는 `--gamepad-profile PROFILE --gamepad-slot 0..3`를 함께 지정하고 관리 실행을 요구한다. GUI `게임패드 교사 기록`이 이 인자를 구성한다.
+
+프로필을 사용하는 수집은 100Hz만 허용한다. 선택 슬롯이 유일한 연결 패드여야 하며 capability를 확인한다. F7 전 왼쪽 스틱 절댓값 8192 초과로 장치를 선택하고, 최신 관측과 ACC 전면 상태를 확인해 F7을 기다린다. F7 전에는 결과 폴더를 만들지 않으며 취소도 결과 없음으로 종료할 수 있다. 관리 시간 제한에는 준비 대기가 포함된다.
+
+`--gamepad-diagnostic`은 프로필을 요구하되 실제·가상 응답 검증 자격을 생략하는 진단 전용이다. 해당 기록은 metadata의 `diagnostic_only=true`와 summary의 `gamepad_training_eligible=false`로 남으며 학습에서 거절한다. 이 옵션은 GUI의 일반 교사 기록에 추가되지 않는다.
+
+## 게임패드 추가 파일과 시계
+
+| 파일 또는 필드 | 내용 |
+| --- | --- |
+| inputs.csv | XInput 원시 입력과 정규화 축, 텔레메트리와 같은 Instant 원점의 읽기 시각 |
+| controls.snapshot.json, assists.snapshot.json | 수집 시작 시 프로필에 연결된 ACC 설정의 원본 바이트 |
+| metadata.input_semantics | gamepad_v1 |
+| metadata.input_profile | 설정·DLL·드라이버·검증 근거와 해시가 포함된 프로필 |
+| metadata.gamepad_slot, physical_gamepad_capabilities | 선택한 슬롯과 최초 장치 식별 자료 |
+| metadata.input_clock, diagnostic_only | 입력 시계 정의와 진단 여부 |
+| summary.input_samples | 입력 표본 수. telemetry 표본 수와 별도 |
+| summary.gamepad_training_eligible | 비진단·오류 없음·행 및 이벤트 누락 0의 수집 단계 자격 |
+
+`inputs.csv`의 열 순서는 [InputRow](../GamepadIO/src/lib.rs)의 직렬화 순서를 따른다.
+
+```text
+sequence,segment_id,read_start_ns,read_end_ns,slot,connected,packet,buttons,lx,ly,rx,ry,lt,rt,stick_x,stick_y,right_x,right_y,throttle,brake,normalization_version
+```
+
+sequence와 두 읽기 시각은 증가해야 하고 `read_start_ns <= read_end_ns`여야 한다. `slot`은 0~3, `connected`는 true/false, packet은 XInput 패킷 번호다. 스틱 정수는 -32768~32767, 트리거는 0~255, 버튼은 16비트 마스크다. 정규화 버전 1은 음수 스틱 /32768, 양수 스틱 /32767, 트리거 /255를 뜻한다. packet이 유지돼도 읽기 행은 유효하며 새로운 조작이 생겼다는 뜻은 아니다.
+
+입력과 telemetry의 `elapsed_ns`는 같은 호스트 단조 원점의 ns다. 입력의 읽기 종료 시각은 차량에 적용된 시각이 아니다. telemetry와 입력은 각각 수집되므로 행 수와 같은 sequence끼리 직접 결합하지 않는다. `segment_id`와 읽기 구간으로 과거 입력·관측 이후 정답을 연결하는 규칙은 [학습 규약](GamepadTrainingSpecification.md#원시-자료와-정답의-시간-연결)에 있다.
+
+## 게임패드 자격과 랩 경계의 추가 검사
+
+수집 중 장치 이탈·장치 집합 변경·capability 변경·설정 변경·저장 오류가 발생하면 오류를 남기며 자동 학습 자격을 해제한다. summary의 자격 true는 수집 단계의 조건일 뿐 최종 모델 학습 채택이 아니다.
+
+기본 `validate_recording.py`의 `format_pass`는 metadata·summary·telemetry·events 및 랩 경계를 검사한다. `inputs.csv` 정규화와 전체 행, 프로필 스냅샷 해시, 관측과 정답의 인과적 연결까지 검사하지는 않는다. 이 부분은 [gamepad.read_inputs와 prepare_recording](../TrainingEnvironment/gamepad.py), 교정 실행은 [corrections.load_corrections](../TrainingEnvironment/corrections.py)가 추가 확인한다.
+
+공유 [FinishLineTracker](../DrivingRecorder/laps.py)는 랩 카운터 +1과 출발선 근방, 또는 카운터 갱신보다 앞선 핫랩 타이머 리셋과 1초 내 progress wrap을 사용한다. 경계 간격은 최소 5초이며 segment 변경 시 상태를 초기화한다. 유효 완전 랩은 같은 segment의 연속한 두 경계 사이에 `lap_valid=false`가 없어야 한다. 랩 학습은 각 랩에서 특징 이력을 새로 만들고, 세션 학습의 무효 구간 사용과 보관용 선별은 [학습 규약](GamepadTrainingSpecification.md)과 [자료 보관](DataArchiveGuide.md)에서 별도로 정의한다.
