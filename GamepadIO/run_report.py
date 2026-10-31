@@ -62,15 +62,32 @@ def inspect_shutdown(rows):
     return dict(passed=not errors,errors=sorted(set(errors)),tracking_epoch=epoch)
 
 
-def report(run, *, replace=False, render_plot=True):
-    from TrackModel.model import load_reference
-    from TrainingEnvironment.human_imitation import project
+def report(run, *, replace=False, render_plot=True, full_comparison=False, output_dir=None):
     run=Path(run).resolve();m=read(run/'manifest.json');summary=read(run/'summary.json')
+    destination=Path(output_dir).resolve() if output_dir is not None else run
+    if output_dir is not None:
+        if destination==run:raise ValueError('Offline comparison must use a separate output directory')
+        destination.mkdir(parents=True,exist_ok=False)
     if m['semantics']!='gamepad_v1':raise ValueError('Wrong live model format')
     verify_hashes(m['output_sha256'],run)
     model=read(Path(m['model'])/'manifest.json')
     verify_hashes(model['output_sha256'],m['model'])
     if digest(Path(m['model'])/'model.json')!=m['model_sha256']:raise ValueError('Different live model')
+    rows=[json.loads(s) for s in (run/'samples.jsonl').read_text().splitlines()]
+    transport,pairs=inspect_log(rows)
+    shutdown=inspect_shutdown(rows)
+    # The stop button waits for this process to exit. Keep causal/safety checks,
+    # but do not re-project an entire teacher session on a cancelled drive.
+    if summary.get('reason')=='user_stop' and not full_comparison:
+        result=dict(semantics='gamepad_v1',transport=transport,shutdown=shutdown,
+            comparison_fields=['stick_x','rt','lt','acc_steering','speed_kmh','heading_error_rad','lateral_error_m'],
+            comparison=[],comparison_status='deferred_user_stop',first_corner_interval_m=None,
+            first_corner_pass_provisional=False,performance_verified=False,reason=summary['reason'],
+            attribution='Transmission and shutdown checks only; teacher comparison deferred after user stop')
+        save(destination/'gamepad-comparison.json',result,replace=replace)
+        return result
+    from TrackModel.model import load_reference
+    from TrainingEnvironment.human_imitation import project
     fresh=model.get('teacher_source')=='intervention_logs'
     lap_teacher=model.get('teacher_source')=='raw_gamepad_laps'
     heldout=None
@@ -84,9 +101,6 @@ def report(run, *, replace=False, render_plot=True):
         if len(candidates)!=1:raise ValueError('Exactly one held-out session required')
     recording=Path(candidates[0]['recording'] if session_teacher else heldout['recording'] if heldout else model['validation_run'] if fresh else model['recordings'][2])
     if not fresh and read(recording/'metadata.json').get('input_semantics')!='gamepad_v1':raise ValueError('Raw gamepad teacher required')
-    rows=[json.loads(s) for s in (run/'samples.jsonl').read_text().splitlines()]
-    transport,pairs=inspect_log(rows)
-    shutdown=inspect_shutdown(rows)
     prepared=Path(m['prepared']);pm=read(prepared/'manifest.json');heading=read(prepared/'heading_profile.json')
     ref=load_reference(pm['track_model_path']);length=ref['manifest']['total_length_m']
     if fresh:
@@ -149,8 +163,8 @@ def report(run, *, replace=False, render_plot=True):
             ax.set_ylabel(label);ax.grid(alpha=.2)
         axes[0].legend();axes[-1].set_xlabel('Reference path position (m)')
         fig.suptitle('Gamepad diagnostic — matched path positions; performance not yet certified')
-        fig.tight_layout();fig.savefig(run/'gamepad-comparison.png',dpi=150);plt.close(fig)
-    save(run/'gamepad-comparison.json',result,replace=replace)
+        fig.tight_layout();fig.savefig(destination/'gamepad-comparison.png',dpi=150);plt.close(fig)
+    save(destination/'gamepad-comparison.json',result,replace=replace)
     return result
 
 
@@ -185,6 +199,12 @@ def repair_report(run):
     return result
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('run');p.add_argument('--repair',action='store_true');a=p.parse_args();r=repair_report(a.run) if a.repair else report(a.run)
+    p=argparse.ArgumentParser();p.add_argument('run');p.add_argument('--repair',action='store_true')
+    p.add_argument('--full-comparison',action='store_true',help='Include teacher comparison after user stop')
+    p.add_argument('--output-dir',help='New directory for an offline comparison; original run stays unchanged')
+    a=p.parse_args()
+    if a.full_comparison and not a.output_dir:p.error('--full-comparison requires --output-dir')
+    if a.repair and (a.full_comparison or a.output_dir):p.error('--repair cannot be combined with offline comparison options')
+    r=repair_report(a.run) if a.repair else report(a.run,full_comparison=a.full_comparison,output_dir=a.output_dir)
     print(json.dumps(r['transport']))
     raise SystemExit(0 if r['transport']['passed'] and r['shutdown']['passed'] else 1)
