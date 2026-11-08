@@ -9,10 +9,10 @@ from .jobs import command
 
 class V2WorkflowTests(unittest.TestCase):
     def test_gui_pretrain_stop_and_resume_with_korean_progress(self):
-        from TrainingEnvironment.test_pretrain import PretrainTests
-        fixture = PretrainTests()
+        from TrainingEnvironment.pretrain_fixtures import PretrainFixture
+        fixture = PretrainFixture()
         fixture.setUp()
-        self.addCleanup(fixture.doCleanups)
+        self.addCleanup(fixture.tearDown)
         root = tk.Tk()
         root.withdraw()
         app = Controller(root, monitoring=False)

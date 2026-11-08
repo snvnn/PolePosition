@@ -142,8 +142,22 @@ impl VirtualPad {
                 }
                 ok(add(v.client, v.target))?;
                 v.released = false;
-                ok(index(v.client, v.target, &mut v.slot))?;
-                if teacher_slot==Some(v.slot){return Err("Teacher and virtual slot collision".into());}
+                // The bus LED/user index can stay at zero with a hidden Xbox One
+                // teacher. Locate the sole new XInput slot, then prove its identity
+                // with the brake/neutral challenge below before returning the device.
+                let mut bus_index = 0;
+                ok(index(v.client, v.target, &mut bus_index))?;
+                let assigned = std::time::Instant::now();
+                loop {
+                    let candidates: Vec<_> = slots().into_iter()
+                        .filter(|s| Some(*s) != teacher_slot).collect();
+                    if candidates.len() > 1 {return Err("Ambiguous new XInput devices".into());}
+                    if let Some(s) = candidates.first() {v.slot = *s; break;}
+                    if assigned.elapsed() > std::time::Duration::from_secs(3) {
+                        return Err("Virtual XInput slot assignment timed out".into());
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
             }
             let wait = std::time::Instant::now();
             while read(v.slot).is_none() && wait.elapsed() < std::time::Duration::from_secs(3) {
@@ -178,6 +192,10 @@ impl VirtualPad {
         self.slot
     }
     pub fn send(&mut self, axes: Axes) -> Result<Report> {
+        self.send_with_buttons(axes, 0)
+    }
+    pub fn send_with_buttons(&mut self, axes: Axes, buttons: u16) -> Result<Report> {
+        if buttons & !0xf000 != 0 {return Err("Only validated face-button passthrough allowed".into());}
         if self.released {
             return Err("Virtual pad already released".into());
         }
@@ -185,7 +203,8 @@ impl VirtualPad {
         if !present.contains(&self.slot) || present.iter().any(|s|*s!=self.slot && Some(*s)!=self.teacher_slot) {
             return Err("Virtual controller lost or unexpected second XInput controller".into());
         }
-        let report = Report::from_axes(axes)?;
+        let mut report = Report::from_axes(axes)?;
+        report.buttons = buttons;
         ok(unsafe { (self.update)(self.client, self.target, report) })?;
         Ok(report)
     }

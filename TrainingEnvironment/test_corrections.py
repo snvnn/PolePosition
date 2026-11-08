@@ -1,6 +1,6 @@
 import copy
 import unittest
-from .corrections import label
+from .corrections import label, toggle_states
 from .gamepad import masked_mse
 
 class CorrectionLabels(unittest.TestCase):
@@ -17,6 +17,17 @@ class CorrectionLabels(unittest.TestCase):
         for change in [dict(read_start_ns=99),dict(read_end_ns=121),dict(connected=False),dict(buttons=0x120),dict(buttons=0x200)]:
             p=self.fixture();p['teacher'].update(change)
             with self.subTest(change=change),self.assertRaises(ValueError):label(p)
+    def test_toggle_release_labels_and_edge_validation(self):
+        p=self.fixture();p.update(authority='human_full',selected_action=[1,0,1],label_mask=[1,1,1]);p['teacher']['buttons']=0
+        self.assertEqual(label(p,full_toggle=True)['mask'],[1,1,1])
+        with self.assertRaises(ValueError):label(p)
+        rows=[]
+        for i,(buttons,enabled,active) in enumerate([(0x200,False,False),(0x200,True,False),(0,True,False),(0x200,True,True),(0x200,True,True),(0,True,True),(0x200,True,False),(0,True,False),(0x200,True,True),(0x20,True,False)]):
+            rows.append(dict(kind='human_input',input=dict(sequence=i,buttons=buttons),toggle_enabled=enabled,full_toggle=active))
+        self.assertEqual(list(toggle_states(rows).values()),[False,False,False,True,True,True,False,False,True,False])
+        rows[5]['full_toggle']=False
+        with self.assertRaises(ValueError):toggle_states(rows)
+
     def test_uncontrolled_pedals_have_zero_target_gradient(self):
         import torch
         y=torch.tensor([[.1,.5,.5]],requires_grad=True)

@@ -83,12 +83,14 @@ impl SpeedProfile {
 #[derive(Default)]
 pub struct FeaturesV2 {
     independent_pedals: bool,
+    seam_bridge: bool,
     base: Features,
     previous: Option<Input>,
     cached: Option<Vec<f32>>,
 }
 impl FeaturesV2 {
     pub fn gamepad() -> Self { Self { independent_pedals:true, ..Self::default() } }
+    pub fn gamepad_seam_bridge() -> Self { Self { independent_pedals:true, seam_bridge:true, ..Self::default() } }
     pub fn reset(&mut self) {
         self.base.reset();
         self.previous = None;
@@ -100,7 +102,13 @@ impl FeaturesV2 {
         model: &Model,
         speed: &SpeedProfile,
     ) -> Result<Option<Vec<f32>>> {
-        let result = self.compute(input, model, speed);
+        let mut adjusted = input.clone();
+        if self.seam_bridge {
+            if let Some((heading, _)) = seam_geometry(model, input.frame.s_m) {
+                adjusted.frame.heading_error_rad = poleposition_state::wrap(input.frame.heading_error_rad + reference_heading(model,input.frame.s_m) - heading);
+            }
+        }
+        let result = self.compute(&adjusted, model, speed);
         if result.is_err() {
             self.reset();
         }
@@ -121,7 +129,9 @@ impl FeaturesV2 {
             || (!self.independent_pedals && a[1] * a[2] != 0.)
             || input.previous_applied_ns >= f.observation_ns
             || f.observation_ns - input.previous_applied_ns >= 100_000_000
-            || !(2..=9).contains(&input.gear_raw)
+            // ACC reports neutral during automatic shifts. Preserve the real value
+            // for gamepad features; legacy wheel semantics remain forward-only.
+            || !(if self.independent_pedals { 1..=9 } else { 2..=9 }).contains(&input.gear_raw)
             || ![10., 20., 40., 80., 120., 160., 200., 240.].contains(&input.speed_cap_kmh)
             || !(0. ..=input.speed_cap_kmh).contains(&f.target_speed_kmh)
         {
@@ -162,6 +172,11 @@ impl FeaturesV2 {
         }
         if v.iter().any(|x| !x.is_finite()) {
             return Err("Nonfinite v2 feature".into());
+        }
+        if self.seam_bridge {
+            for (index, distance) in [(8,0.),(9,10.),(10,20.),(11,40.),(12,80.),(26,160.),(27,320.)] {
+                if let Some((_,curvature))=seam_geometry(model,f.s_m+distance) {v[index]=curvature as f32;}
+            }
         }
         self.cached = Some(v.clone());
         Ok(Some(v))
@@ -275,6 +290,42 @@ mod tests {
         assert!(FeaturesV2::default().update(&x,&model,&speed).is_err());
     }
     #[test]
+    fn gamepad_shift_neutral_keeps_fresh_features_without_faking_gear() {
+        let (model, speed) = fixture();
+        let mut f = FeaturesV2::gamepad();
+        for i in 0..=80 {
+            let mut x = input(i);
+            // Reproduce a 110 ms neutral interval, longer than the 80 ms lease.
+            x.gear_raw = if (55..66).contains(&i) { 1 } else { 4 };
+            let result = f.update(&x, &model, &speed).unwrap();
+            if i >= 50 {
+                let values = result.expect("No feature gap during automatic shift");
+                assert_eq!(values[22], x.gear_raw as f32);
+                assert!(values.iter().all(|x| x.is_finite()));
+            }
+        }
+        let mut neutral = input(0); neutral.gear_raw = 1;
+        assert!(FeaturesV2::default().update(&neutral, &model, &speed).is_err());
+        for gear in [0, -1, 10] {
+            let mut invalid = input(0); invalid.gear_raw = gear;
+            assert!(FeaturesV2::gamepad().update(&invalid, &model, &speed).is_err());
+        }
+    }
+    #[test]
+    fn seam_bridge_is_periodic_and_matches_boundary_heading_and_curvature() {
+        let (mut model,_) = fixture();
+        for p in &mut model.points {p.tangent_x=1.;p.tangent_z=0.;p.curvature_per_m=0.;}
+        let left=seam_geometry(&model,model.length-0.00001).unwrap();
+        let right=seam_geometry(&model,0.00001).unwrap();
+        assert!((left.0-right.0).abs()<1e-6 && (left.1-right.1).abs()<1e-6);
+        for s in [model.length-15.,15.] {
+            let (h,k)=seam_geometry(&model,s).unwrap();
+            assert!((h-reference_heading(&model,s)).abs()<1e-9);
+            assert!((k-model.curvature(s)).abs()<1e-9);
+        }
+        assert!(seam_geometry(&model,30.).is_none());
+    }
+    #[test]
     fn future_axes_invalid_profile_and_departure_ramp() {
         let (model, mut speed) = fixture();
         let mut features = FeaturesV2::default();
@@ -287,4 +338,25 @@ mod tests {
         speed.s_m[1] = 0.;
         assert!(speed.validate(&model).is_err());
     }
+}
+
+/// Versioned feature-only bridge over the short artificial closure kink.
+/// Original projection/recording and path-distance safety checks remain unchanged.
+fn reference_heading(model:&Model,s:f64)->f64 {
+    let s=s.rem_euclid(model.length);
+    let i=model.points.partition_point(|p|p.s_m<=s).saturating_sub(1);
+    let a=&model.points[i];let b=&model.points[(i+1)%model.points.len()];
+    let end=if i+1==model.points.len(){model.length}else{b.s_m};
+    let u=(s-a.s_m)/(end-a.s_m);
+    (a.tangent_z+(b.tangent_z-a.tangent_z)*u).atan2(a.tangent_x+(b.tangent_x-a.tangent_x)*u)
+}
+pub fn seam_geometry(model:&Model,s:f64)->Option<(f64,f64)> {
+    let width=15.;let q=poleposition_state::cyclic_delta(s.rem_euclid(model.length),0.,model.length);
+    if q.abs()>width || model.length<4.*width {return None;}
+    let h0=reference_heading(model,model.length-width);let h1=h0+poleposition_state::wrap(reference_heading(model,width)-h0);
+    let span=2.*width;let a=model.curvature(model.length-width)*span;let b=model.curvature(width)*span;
+    let u=(q+width)/span;let u2=u*u;let u3=u2*u;
+    let h=(2.*u3-3.*u2+1.)*h0+(u3-2.*u2+u)*a+(-2.*u3+3.*u2)*h1+(u3-u2)*b;
+    let k=((6.*u2-6.*u)*h0+(3.*u2-4.*u+1.)*a+(-6.*u2+6.*u)*h1+(3.*u2-2.*u)*b)/span;
+    Some((poleposition_state::wrap(h),k))
 }

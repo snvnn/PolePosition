@@ -1,0 +1,57 @@
+exclude_engine_state = true
+prepared_examples_model = "C:\\Users\\YoonHyeon\\Desktop\\accad\\reinforcement_runs\\gamepad-imitation-1791727401043557500-155aa641"
+exclude_longitudinal_response = true
+hotlap_train_runs = ["actuator_runs/gamepad-1791709830706476500-19016", "actuator_runs/gamepad-1791710244425194800-9348", "actuator_runs/gamepad-1791710299749806500-9656", "actuator_runs/gamepad-1791710352198780800-4760", "actuator_runs/gamepad-1791710450982921400-20640"]
+hotlap_validation_run = "actuator_runs/gamepad-1791710552149738600-2644"
+lap_teacher_recordings = true
+exclude_previous_actions = true
+feature_transform = "seam_bridge_15m_v1"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+speed_profile = "reinforcement_runs/human-first-lap-imitation-1791019571061957400-b6d9e4ca/speed-profile.json"
+epochs = 50
+output_dir = "reinforcement_runs"
+
+[[laps]]
+recording = "recordings/1791716502555432000-32804-0"
+lap_index = 1
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717099762827900-13184-0"
+lap_index = 1
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717099762827900-13184-0"
+lap_index = 2
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 1
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 4
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 5
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 6
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 8
+split = "train"
+
+[[laps]]
+recording = "recordings/1791717537427884200-31712-0"
+lap_index = 9
+split = "validation"

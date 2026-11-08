@@ -1,0 +1,6 @@
+{
+  "task": "고정 정책 연속주행 평가",
+  "config": "TrainingEnvironment/gamepad-online.toml",
+  "model": "reinforcement_runs/gamepad-online-session-1793433050717917200-6c56b6c4/gamepad-online-checkpoint-1793433080812918300-53e368ef",
+  "seconds": "7200"
+}

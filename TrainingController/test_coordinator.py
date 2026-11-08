@@ -1,6 +1,9 @@
 from pathlib import Path
 import time
 import unittest
+import tempfile
+import json
+import hashlib
 
 from .coordinator import Coordinator
 from .process import ManagedProcess
@@ -71,6 +74,44 @@ class CoordinatorTests(unittest.TestCase):
     def test_second_request_is_rejected_even_while_monitor_stops(self):
         self.runner.poll(); self.runner.start(['first'])
         with self.assertRaises(RuntimeError): self.runner.start(['second'])
+
+    def test_released_gamepad_can_prepare_while_previous_report_finishes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)
+            runner=Coordinator(path,monitoring=False,factory=FakeProcess)
+            runner.start(['gamepad']);runner.poll()
+            old=runner.job
+            old.events.append(dict(event='progress',model_type='gamepad_v1',result_dir=str(path)))
+            runner.stop();runner.poll()
+            self.assertTrue(runner.busy)
+            summary=dict(semantics='gamepad_v1',reason='user_stop',released=False,error=None,logging_failure=False)
+            def publish():
+                data=json.dumps(summary).encode()
+                (path/'summary.json').write_bytes(data)
+                (path/'manifest.json').write_text(json.dumps(dict(complete=True,output_sha256={'summary.json':hashlib.sha256(data).hexdigest()})))
+            publish();runner.poll()
+            self.assertTrue(runner.busy)
+            summary['released']=True;publish()
+            events=runner.poll()
+            self.assertFalse(runner.busy)
+            self.assertIn(old,runner.background)
+            self.assertTrue(any(source=='job' and e['state']=='stopped' for source,e in events))
+            runner.start(['next']);runner.poll()
+            old.finish()
+            events=runner.poll()
+            self.assertTrue(runner.busy)
+            self.assertEqual(runner.job.starts,[['next']])
+            self.assertTrue(any(source=='background' for source,e in events))
+            self.assertFalse(runner.background)
+
+    def test_close_waits_for_background_result_cleanup(self):
+        runner=Coordinator(ROOT,monitoring=False,factory=FakeProcess)
+        worker=FakeProcess();worker.start(['report'],ROOT)
+        runner.background.append(worker)
+        runner.close();runner.poll()
+        self.assertFalse(runner.closed)
+        worker.finish();runner.poll()
+        self.assertTrue(runner.closed)
 
 
 @unittest.skipUnless((ROOT/'target/release/poleposition-telemetry.exe').is_file(), 'Build Rust release binaries')

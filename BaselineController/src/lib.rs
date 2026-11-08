@@ -119,6 +119,11 @@ impl Observation {
     pub fn check_with_speed_limit(
         &self, c: &Config, now: u64, starting: bool, speed_limit: bool,
     ) -> std::result::Result<(), &'static str> {
+        self.check_with_limits(c, now, starting, speed_limit, true)
+    }
+    pub fn check_with_limits(
+        &self, c: &Config, now: u64, starting: bool, speed_limit: bool, path_limits: bool,
+    ) -> std::result::Result<(), &'static str> {
         if !self.ready {
             return Err("tracking_not_ready");
         }
@@ -152,7 +157,7 @@ impl Observation {
         if speed_limit && self.speed_kmh > c.max_speed_kmh {
             return Err("speed_limit");
         }
-        if self.projection_distance_m
+        if path_limits && self.projection_distance_m
             > if starting {
                 c.start_distance_m
             } else {
@@ -161,7 +166,7 @@ impl Observation {
         {
             return Err("path_distance_limit");
         }
-        if wrap(self.heading_error_rad).abs().to_degrees()
+        if path_limits && wrap(self.heading_error_rad).abs().to_degrees()
             > if starting {
                 c.start_heading_deg
             } else {
@@ -438,5 +443,25 @@ impl Controller {
             complete: false,
         };
         self.cached.clone()
+    }
+}
+
+#[cfg(test)]
+mod departure_gate_tests {
+    use super::*;
+    #[test]
+    fn disabling_reference_limits_preserves_observation_checks() {
+        let c: Config=toml::from_str(include_str!("../config.toml")).unwrap();
+        let mut o=Observation {sequence:1,observation_ns:1,tracking_epoch:1,ready:true,in_pit:false,gear_raw:2,speed_kmh:10.,x:0.,z:0.,heading_rad:0.,heading_error_rad:1.,projection_distance_m:8.,lateral_error_m:8.,s_m:0.,accumulated_m:0.};
+        assert_eq!(o.check_with_speed_limit(&c,2,false,false),Err("path_distance_limit"));
+        assert!(o.check_with_limits(&c,2,false,false,false).is_ok());
+        o.projection_distance_m=0.;
+        assert_eq!(o.check_with_speed_limit(&c,2,false,false),Err("heading_limit"));
+        assert!(o.check_with_limits(&c,2,false,false,false).is_ok());
+        assert_eq!(o.check_with_limits(&c,200_000_000,false,false,false),Err("observation_expired"));
+        o.x=f64::NAN;
+        assert_eq!(o.check_with_limits(&c,2,false,false,false),Err("invalid_observation"));
+        o.x=0.;o.ready=false;
+        assert_eq!(o.check_with_limits(&c,2,false,false,false),Err("tracking_not_ready"));
     }
 }

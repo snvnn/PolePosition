@@ -9,6 +9,22 @@ pub fn names() -> Vec<String> {
     n[21] = "previous_lt".into();
     n
 }
+pub fn feedback_names() -> Vec<String> {
+    let mut n=names();n[3]="acc_steering_raw".into();n
+}
+pub fn validate_observation_variant(network: &Network, variant: Option<&str>) -> Result<bool> {
+    match variant {
+        None if network.feature_names==names() => Ok(false),
+        Some("acc_steering_feedback_v1") if network.feature_names==feedback_names() => Ok(true),
+        _ => Err("Gamepad observation variant/schema mismatch".into()),
+    }
+}
+pub fn apply_steering_feedback(features: &mut [f32], steering: f64) -> Result<()> {
+    if features.len()!=35 || !steering.is_finite() || !(steering as f32).is_finite() {
+        return Err("Invalid steering feedback observation".into());
+    }
+    features[3]=steering as f32;Ok(())
+}
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Network {
@@ -22,7 +38,7 @@ pub struct Network {
 impl Network {
     pub fn validate(&self) -> Result<()> {
         if self.semantics != "gamepad_v1"
-            || self.feature_names != names()
+            || (self.feature_names != names() && self.feature_names != feedback_names())
             || self.action_names != ["stick_x", "rt", "lt"]
             || self.mean.len() != 35
             || self.std.len() != 35
@@ -99,6 +115,14 @@ mod tests {
                 .collect(),
         };
         assert_eq!(n.predict(&[0.; 35]).unwrap(), [0., 0.5, 0.5]);
+        assert!(!validate_observation_variant(&n,None).unwrap());
+        assert!(validate_observation_variant(&n,Some("acc_steering_feedback_v1")).is_err());
+        n.feature_names=feedback_names();
+        assert!(validate_observation_variant(&n,None).is_err());
+        assert!(validate_observation_variant(&n,Some("acc_steering_feedback_v1")).unwrap());
+        let mut f=[2.;35];apply_steering_feedback(&mut f,-0.25).unwrap();
+        assert_eq!(f[3],-0.25);assert_eq!(f[4],2.);
+        assert!(apply_steering_feedback(&mut f,f64::NAN).is_err());
         n.semantics = "wheel".into();
         assert!(n.validate().is_err());
     }

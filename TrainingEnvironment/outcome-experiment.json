@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source_model": "reinforcement_runs/gamepad-imitation-1793425305066918700-4d98bcf9",
+  "original_model": "reinforcement_runs/gamepad-imitation-1792231181059399600-43934c30",
+  "teacher_dataset": "reinforcement_runs/continuous-reference-1793424887607418600-8df8d472/dataset",
+  "teacher_experiment": "reinforcement_runs/continuous-reference-1793424887607418600-8df8d472",
+  "success_archive": "reinforcement_runs/autonomous-two-laps-1793422357204916300-c70c929b",
+  "run_root": "actuator_runs",
+  "output_dir": "reinforcement_runs",
+  "quarantined_runs": {
+    "gamepad-1793424022562561400-52032": "Previously diagnosed finish-line weaving; precise boundaries unresolved; whole run quarantined",
+    "gamepad-1793424064023111200-5944": "Previously diagnosed finish-line weaving; precise boundaries unresolved; whole run quarantined"
+  },
+  "quarantine_evidence": "reinforcement_runs/finish-line-diagnosis-1793424485653917600-05d40d41/report.json",
+  "start_line_radius_m": 150.0,
+  "history_clearance_ns": 620000000,
+  "validation_every_n_runs": 5,
+  "seed": 42,
+  "epochs": 50,
+  "epoch_samples": 229155,
+  "batch_size": 256,
+  "learning_rate": 0.0003,
+  "success_actor_fraction": 0.10,
+  "iql": {
+    "updates": 20000,
+    "expectile": 0.7,
+    "advantage_temperature": 3.0,
+    "maximum_actor_weight": 20.0,
+    "gamma_per_20ms": 0.999,
+    "target_tau": 0.005,
+    "reward_scale": 0.01,
+    "actor_rl_coefficient": 0.1
+  },
+  "reward": {
+    "progress": 1.0,
+    "time": -0.1,
+    "lateral_squared": -0.2,
+    "heading_squared": -0.1,
+    "applied_action_change_squared": -0.01,
+    "valid_full_lap": 10.0,
+    "invalid_lap": -10.0
+  }
+}

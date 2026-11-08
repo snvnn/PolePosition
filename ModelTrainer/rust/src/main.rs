@@ -16,7 +16,7 @@ fn run() -> Result<()> {
     if args.as_slice()==["gamepad-schema"] {
         println!("{}",serde_json::json!({"semantics":"gamepad_v1","feature_names":poleposition_policy::gamepad::names(),"action_names":["stick_x","rt","lt"]}));return Ok(());
     }
-    if args.len() != 4 && !(args.len() == 5 && matches!(args[0].as_str(),"features-v2"|"features-gamepad")) {
+    if args.len() != 4 && !(args.len() == 5 && matches!(args[0].as_str(),"features-v2"|"features-gamepad"|"features-gamepad-seam")) {
         return Err("Usage: poleposition-policy features PREPARED INPUT.jsonl OUTPUT.jsonl | predict MODEL INPUT.jsonl OUTPUT.jsonl".into());
     }
     let input = BufReader::new(File::open(&args[2])?);
@@ -47,14 +47,14 @@ fn run() -> Result<()> {
                 writeln!(output)?;
             }
         }
-        "features-v2" | "features-gamepad" => {
+        "features-v2" | "features-gamepad" | "features-gamepad-seam" => {
             use poleposition_policy::features_v2::{FeaturesV2, Input, SpeedProfile, names};
             let p = Prepared::load(Path::new(&args[1]))?;
             let speed: SpeedProfile =
                 serde_json::from_value(poleposition_state::model::json(Path::new(&args[4]))?)?;
             speed.validate(&p.model)?;
-            let gamepad=args[0]=="features-gamepad";
-            let mut features = if gamepad {FeaturesV2::gamepad()} else {FeaturesV2::default()};
+            let gamepad=args[0]!="features-v2";
+            let mut features = if args[0]=="features-gamepad-seam" {FeaturesV2::gamepad_seam_bridge()} else if gamepad {FeaturesV2::gamepad()} else {FeaturesV2::default()};
             for line in input.lines() {
                 let input: Input = serde_json::from_str(&line?)?;
                 let values = features.update(&input, &p.model, &speed)?;

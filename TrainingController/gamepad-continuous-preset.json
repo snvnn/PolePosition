@@ -1,0 +1,7 @@
+{
+  "task": "게임패드 교사 기록",
+  "config": "C:\\Users\\YoonHyeon\\Desktop\\accad\\GamepadIO\\teacher-continuous.toml",
+  "profile": "C:\\Users\\YoonHyeon\\Desktop\\accad\\input_profiles\\gamepad\\intervention-profile.json",
+  "mode": "0",
+  "seconds": "1800"
+}

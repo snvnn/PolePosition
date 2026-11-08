@@ -6,6 +6,18 @@ from .single_instance import SingleInstance
 from .protocol import validate_event
 
 class GamepadGuiTests(unittest.TestCase):
+    def test_comparison_json_preview(self):
+        import json
+        from types import SimpleNamespace
+        from .__main__ import Controller
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/'comparison.json'
+            path.write_text(json.dumps(dict(schema='gamepad_policy_comparison_v1',session_seconds=7200)))
+            displayed=[];app=Controller.__new__(Controller)
+            app.config=SimpleNamespace(get=lambda:str(path))
+            app.configuration_summary=SimpleNamespace(set=displayed.append)
+            app.update_config_preview()
+            self.assertIn('5개 정책',displayed[-1]);self.assertIn('7200초',displayed[-1])
     def test_jobs_use_new_backend_and_do_not_run_wheel(self):
         with tempfile.TemporaryDirectory() as d:
             r=Path(d);(r/'config').write_text('');(r/'profile').write_text('')
@@ -13,6 +25,9 @@ class GamepadGuiTests(unittest.TestCase):
             self.assertIn('poleposition-gamepad.exe',' '.join(command(r,'게임패드 모델 시험',v)))
             self.assertIn('poleposition-gamepad.exe',' '.join(command(r,'게임패드 교정 주행',v)))
             self.assertIn('gamepad-train',command(r,'게임패드 교정 학습',v))
+            comparison=command(r,'정책 비교 평가',v)
+            self.assertIn('gamepad-policy-compare',comparison)
+            self.assertNotIn('--checkpoint',comparison)
             for task in ('실제 패드 응답 검사','가상 패드 응답 검사'):
                 self.assertIn('--response',command(r,task,v))
             self.assertIn('--gamepad-profile',command(r,'게임패드 교사 기록',v))

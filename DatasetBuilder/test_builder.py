@@ -1,7 +1,6 @@
 import csv
 import json
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -9,12 +8,10 @@ from unittest.mock import patch
 from .builder import build, hashes, split_laps, check_config, quality
 from .report import envelope
 
-# Reuse the recorder's real on-disk fixture and validator regression suite.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'DrivingRecorder'))
-import test_validate_recording as recorder_tests
+from DrivingRecorder.recording_fixtures import RecordingFixture
 
 
-class BuilderTests(recorder_tests.ValidationTests):
+class BuilderTests(RecordingFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.outputs = tempfile.TemporaryDirectory()

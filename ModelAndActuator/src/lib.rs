@@ -1,6 +1,7 @@
 pub mod binding;
 #[cfg(windows)] pub mod gamepad;
 pub mod core;
+pub mod gamepad_episode;
 pub mod ipc;
 pub mod logger;
 pub mod platform;
@@ -170,3 +171,4 @@ impl Config {
         (self.max_age_ms * 1e6) as u64
     }
 }
+mod automatic_start;

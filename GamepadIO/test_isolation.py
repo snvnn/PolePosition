@@ -1,8 +1,16 @@
 import unittest
+import subprocess
+from unittest.mock import patch
 from pathlib import Path
-from .isolation import validate_configuration
+from .isolation import validate_configuration, call
 
 class IsolationTests(unittest.TestCase):
+    def test_read_only_child_does_not_inherit_management_input(self):
+        with patch('GamepadIO.isolation.subprocess.check_output',return_value='--cloak-on') as child:
+            self.assertEqual(call(['HidHideCLI.exe','--cloak-state']),'--cloak-on')
+        self.assertEqual(child.call_args.kwargs['stdin'],subprocess.DEVNULL)
+        self.assertEqual(child.call_args.kwargs['timeout'],1)
+
     def test_allow_only_controller_and_hide_physical_pad(self):
         c=dict(controller=str(Path('controller.exe').resolve()),visibility_probe=str(Path('probe.exe').resolve()),game_executables=[str(Path('acc.exe').resolve())],hidden_device_paths=['HID\\PAD'])
         text='--cloak-on\n--inv-off\n--app-reg "'+c['controller']+'"\n--dev-hide "HID\\PAD"\n'

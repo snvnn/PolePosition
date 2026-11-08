@@ -120,6 +120,13 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
         job = self.run_worker('pass')
         self.assertEqual(self.collect(job)['state'], 'failed')
 
+    def test_abrupt_exit_reports_code_and_stderr(self):
+        job = self.run_worker("import sys; print('fatal diagnostic', file=sys.stderr); raise SystemExit(17)")
+        final = self.collect(job)
+        self.assertEqual(final['state'], 'failed')
+        self.assertIn('exit code 17 / 0x00000011', final['reason'])
+        self.assertIn('fatal diagnostic', final['reason'])
+
     def test_duplicate_job_and_cooperative_stop(self):
         job = self.run_worker("from TrainingController.protocol import Control,message; import sys; c=Control(sys.stdin); c.listen(); print(message(event='finished',state='stopped',reason=c.reason),flush=True)")
         with self.assertRaises(RuntimeError):
@@ -150,8 +157,8 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
         self.assertEqual(self.collect(job)['state'], 'failed')
 
     def test_actual_training_worker(self):
-        from ModelTrainer.test_training import TrainingTests
-        fixture = TrainingTests()
+        from ModelTrainer.training_fixtures import TrainingFixture
+        fixture = TrainingFixture()
         fixture.setUp()
         self.addCleanup(fixture.tearDown)
         job = ManagedProcess()
@@ -163,9 +170,9 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
         self.assertTrue((Path(event['result_dir']) / 'last.pt').is_file())
 
     def test_actual_worker_epoch_cap_preserves_config(self):
-        from ModelTrainer.test_training import TrainingTests
+        from ModelTrainer.training_fixtures import TrainingFixture
         from ModelTrainer.common import read
-        fixture = TrainingTests()
+        fixture = TrainingFixture()
         fixture.setUp()
         self.addCleanup(fixture.tearDown)
         original_config = fixture.cp.read_bytes()
@@ -181,8 +188,8 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
         self.assertEqual(fixture.cp.read_bytes(), original_config)
 
     def test_actual_worker_disconnect_preserves_incomplete_result(self):
-        from ModelTrainer.test_training import TrainingTests
-        fixture = TrainingTests()
+        from ModelTrainer.training_fixtures import TrainingFixture
+        fixture = TrainingFixture()
         fixture.setUp()
         self.addCleanup(fixture.tearDown)
         job = ManagedProcess()
@@ -233,11 +240,12 @@ class GuiTests(unittest.TestCase):
         try:
             app = Controller(root, monitoring=False)
             root.update()
+            app.task.set('모방학습'); app.select_task()
             app.lock(True)
             self.assertTrue(all(str(widget['state']) == 'disabled' for widget in app.inputs))
             app.lock(False)
             for name, widgets in app.field_widgets.items():
-                enabled = name in {'task', 'dataset', 'checkpoint', 'config', 'seconds', 'epochs', 'start', 'resume'}
+                enabled = name in {'task', 'task_group', 'dataset', 'checkpoint', 'config', 'seconds', 'epochs', 'start', 'resume'}
                 self.assertTrue(all((str(widget['state']) != 'disabled') == enabled for widget in widgets))
         finally:
             root.update_idletasks()
@@ -250,6 +258,12 @@ class GuiTests(unittest.TestCase):
         root.withdraw()
         try:
             app = Controller(root, monitoring=False)
+            self.assertEqual(app.task_group.get(), '게임패드 학습·주행')
+            self.assertEqual(len(app.field_widgets['task'][0]['values']), 5)
+            self.assertTrue(app.config.get().endswith('teacher-hotlap.toml'))
+            self.assertTrue(app.profile.get().endswith('profile.json'))
+            app.task_group.set('이전 vJoy 작업'); app.select_task_group()
+            self.assertEqual(app.task.get(), '모방학습')
             app.config.set('custom-training.toml')
             app.task.set('평가·주행'); app.select_task()
             self.assertEqual(str(app.field_widgets['resume'][0]['state']), 'disabled')
@@ -261,6 +275,7 @@ class GuiTests(unittest.TestCase):
             self.assertTrue(all(str(widget['state']) == 'disabled' for widget in app.inputs))
             app.lock(False)
             app.task.set('강화학습'); app.select_task()
+            self.assertEqual(app.task_group.get(), '강화학습')
             self.assertEqual(str(app.field_widgets['start'][0]['state']), 'normal')
             self.assertEqual(app.mode.get(), 'verify5')
             self.assertIn('F7', app.detail.get())
@@ -281,7 +296,7 @@ class GuiTests(unittest.TestCase):
             root = tk.Tk()
             root.withdraw()
             try:
-                with patch('TrainingController.__main__.ROOT', Path(directory)):
+                with patch('TrainingController.ui.ROOT', Path(directory)):
                     app = Controller(root, monitoring=False)
                     app.listbox.selection_set(0)
                     app.update_result_actions()
@@ -292,7 +307,7 @@ class GuiTests(unittest.TestCase):
                     self.assertFalse(app.coordinator.busy)
                     app.lock(True)
                     self.assertEqual(str(app.checkpoint_button['state']), 'disabled')
-                    with patch('TrainingController.__main__.os.startfile') as opener:
+                    with patch('TrainingController.result_view.os.startfile') as opener:
                         app.open_result(False)
                         opener.assert_not_called()
             finally:

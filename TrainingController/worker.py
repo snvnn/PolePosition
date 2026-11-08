@@ -1,11 +1,13 @@
 """Offline managed worker. stdout contains only protocol events."""
 import argparse
 import contextlib
+import faulthandler
 import sys
 import threading
 import time
 
-from .protocol import Control, message
+from ExecutionRuntime.protocol import Control, message
+from .task_catalog import WORKER_TASKS
 
 
 def terminal_state(complete, reason):
@@ -15,12 +17,14 @@ def terminal_state(complete, reason):
 
 
 def main():
+    # Native faults bypass Python exception handlers; leave a stack on stderr.
+    faulthandler.enable(file=sys.stderr, all_threads=True)
     # Windows console defaults can be CP949; the management protocol is UTF-8.
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         if hasattr(stream, 'reconfigure'):
             stream.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', choices=['train', 'evaluate', 'prepare-v2', 'pretrain-v2', 'online', 'gamepad-probe', 'gamepad-train'], default='train')
+    parser.add_argument('--task', choices=tuple(WORKER_TASKS), default='train')
     parser.add_argument('--model')
     for name in ('prepared','profile','controller-config','previous-run','stage'):
         parser.add_argument('--'+name)
@@ -31,7 +35,9 @@ def main():
     parser.add_argument('--seconds', type=float, default=7200)
     parser.add_argument('--epochs', type=int)
     args = parser.parse_args()
-    if (args.task in ('train', 'pretrain-v2') and bool(args.dataset) == bool(args.resume)) or not 0 < args.seconds <= 7200:
+    spec = WORKER_TASKS[args.task]
+    maximum = spec.max_seconds
+    if (args.task in ('train', 'pretrain-v2') and bool(args.dataset) == bool(args.resume)) or not 0 < args.seconds <= maximum:
         parser.error('Specify dataset or resume and a time limit in (0, 7200]')
     if args.task == 'evaluate' and (not args.model or not args.dataset or args.resume):
         parser.error('Evaluation requires model and dataset, without resume')
@@ -40,6 +46,7 @@ def main():
     output = sys.stdout
     latest_result = None
     result = None
+    emit_lock = threading.Lock()
 
     def emit(event, **fields):
         nonlocal latest_result
@@ -47,8 +54,9 @@ def main():
             latest_result = fields['result_dir']
         if event == 'progress':
             fields['elapsed_seconds'] = time.monotonic() - started
-        output.write(message(event=event, **fields))
-        output.flush()
+        with emit_lock:
+            output.write(message(event=event, **fields))
+            output.flush()
 
     control = Control(sys.stdin)
     threading.Thread(target=control.listen, daemon=True).start()
@@ -73,22 +81,37 @@ def main():
             return 0
         emit('state', state='evaluating' if args.task == 'evaluate' else 'training')
         with contextlib.redirect_stdout(sys.stderr):
-            from ModelTrainer.training import train
             from ModelTrainer.common import read
+            if args.task=='gamepad-champion-cycle':
+                cycle = spec.load_handler()
+                result,complete,reason=cycle(args,control,emit)
+                emit('finished',state='completed' if complete else 'stopped',reason=reason,result_dir=str(result))
+                return 0
+            if args.task=='gamepad-policy-compare':
+                compare = spec.load_handler()
+                result,complete,reason=compare(args,control,emit)
+                emit('finished',state='completed' if complete else 'stopped',reason=reason,result_dir=str(result))
+                return 0
+            if args.task in ('gamepad-online','gamepad-online-evaluate'):
+                gamepad_online = spec.load_handler()
+                result,complete,reason=gamepad_online(args,control,emit)
+                emit('finished',state='completed' if complete else 'stopped',reason=reason,result_dir=str(result))
+                return 0
             if args.task == 'online':
-                from TrainingEnvironment.online import run
+                run = spec.load_handler()
                 result, complete, reason = run(args, control, emit)
                 metrics = read(result/'training-summary.json') if (result/'training-summary.json').is_file() else {}
                 emit('finished',state='completed' if complete else 'stopped',reason=reason,result_dir=str(result),updates=metrics.get('updates',0))
                 return 0
             if args.task == 'gamepad-train':
-                from TrainingEnvironment.gamepad import train as gamepad_train
+                gamepad_train = spec.load_handler()
                 result=gamepad_train(args.config,should_stop=stopped,on_progress=lambda data:emit('progress',**data))
             elif args.task == 'train':
+                train = spec.load_handler()
                 result = train(args.dataset, args.config, args.resume, epoch_limit=args.epochs, should_stop=stopped,
                                on_progress=lambda data: emit('progress', **data))
             elif args.task == 'pretrain-v2':
-                from TrainingEnvironment.pretrain import train as pretrain
+                pretrain = spec.load_handler()
                 result = pretrain(args.dataset, args.config, args.resume, epoch_limit=args.epochs,
                                   should_stop=stopped, on_progress=lambda data: emit('progress', **data))
             elif args.task == 'prepare-v2':
@@ -104,7 +127,7 @@ def main():
                          result_dir=latest_result)
                     return 0 if control.reason in ('user_stop', 'time_limit') else 1
             else:
-                from Evaluator.evaluate import replay
+                replay = spec.load_handler()
                 result = replay(args.model, args.dataset, args.split, should_stop=stopped,
                                 on_progress=lambda data: emit('progress', **data))
             manifest = read(result / 'manifest.json')

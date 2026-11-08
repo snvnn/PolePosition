@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from DatasetBuilder.builder import build as build_dataset, csv_write, json_write, REQUIRED
 from DatasetBuilder.review import scan, finalize, read_json, digest, snapshot
 from TrackModel.model import build as build_track, load_reference
-from TrackModel.test_model import make_source
+from TrackModel.model_fixtures import make_source
 from .prepare import calibrate, config_check, prepare
 from .report import report, load_run, signal_chart
 

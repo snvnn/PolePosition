@@ -1,0 +1,6 @@
+{
+  "task": "게임패드 회차 학습",
+  "config": "TrainingEnvironment/gamepad-online.toml",
+  "checkpoint": "reinforcement_runs/gamepad-online-session-1793872159222021600-cf614e18",
+  "seconds": "7200"
+}

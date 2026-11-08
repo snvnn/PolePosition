@@ -10,14 +10,42 @@ def settings_json(path):
     b=Path(path).read_bytes()
     return json.loads(b.decode('utf-16') if b.startswith(b'\xff\xfe') or b[1:2]==b'\0' else b.decode('utf-8-sig'))
 
+def unbound_virtual_device(device):
+    # ACC appends this DirectInput inventory entry for ViGEm. Gamepad-mode
+    # bindings live in gamepadSettings; never discard an entry with bindings.
+    expected=dict(version=0,productName='Controller (XBOX 360 For Windows)',
+        productId='42861662-0-0-00807368867368',steeringWheelModel='None',
+        isGamePad=0,isPedals=0,iconTemplate='None',uICommandButtonList=[],
+        raceCommandButtonList=[],raceCommandAxisList=[],forceFeedbackGain=1,
+        steerScale=1,steerLock=900,dynamicDamping=1,steerLinearity=1,
+        roadEffects=0,minDamper=0,damperGain=1,antaniGain=1,
+        minimumForceFeedback=0,brakeGamma=1,combinedPedals=0)
+    return (isinstance(device,dict) and isinstance(device.get('instanceGuid'),str)
+        and bool(device['instanceGuid'])
+        and {k:v for k,v in device.items() if k!='instanceGuid'}==expected)
+
+def normalized_controls(value):
+    value=dict(value)
+    devices=value['commandDevices']
+    ignored=[d for d in devices if unbound_virtual_device(d)]
+    if len(ignored)>1:raise ValueError('Multiple virtual controller inventory entries')
+    value['commandDevices']=sorted([d for d in devices if not unbound_virtual_device(d)],
+                                   key=lambda d:json.dumps(d,sort_keys=True))
+    return value
+
+def verified_controls_reference(profile):
+    current=Path(profile['controls'])
+    reference=Path(profile.get('controls_reference') or current)
+    if digest(reference)!=profile['input_sha256'][profile['controls']]:
+        raise ValueError('Controls reference hash mismatch')
+    if normalized_controls(settings_json(current))!=normalized_controls(settings_json(reference)):
+        raise ValueError('ACC input settings changed beyond unbound device inventory')
+    return reference
+
 def equivalent_controls(recording,profile):
     reference=profile.get('controls_reference')
     if not reference or digest(reference)!=profile['input_sha256'][profile['controls']]:return False
-    def normalized(x):
-        x=dict(x)
-        x['commandDevices']=sorted(x['commandDevices'],key=lambda d:json.dumps(d,sort_keys=True))
-        return x
-    return normalized(settings_json(Path(recording)/'controls.snapshot.json'))==normalized(settings_json(reference))
+    return normalized_controls(settings_json(Path(recording)/'controls.snapshot.json'))==normalized_controls(settings_json(reference))
 
 def select(c):
     entries=c['laps']

@@ -64,8 +64,8 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
                 root.update_idletasks(); root.destroy()
 
     def test_gui_stop_resume_and_offline_evaluation(self):
-        from ModelTrainer.test_training import TrainingTests
-        fixture = TrainingTests()
+        from ModelTrainer.training_fixtures import TrainingFixture
+        fixture = TrainingFixture()
         fixture.setUp()
         self.addCleanup(fixture.tearDown)
         # Enough mini-batches for Tk to observe an epoch and request a real stop.
@@ -84,6 +84,8 @@ print(message(event='finished',state='stopped',reason=c.reason),flush=True)
         root.report_callback_exception = lambda *error: callback_errors.append(error)
         # Put all generated outputs in the temporary fixture, including evaluation.
         app.coordinator.root = fixture.root
+        app.task.set('모방학습')
+        app.select_task()
 
         def pump_until(predicate, timeout=45):
             deadline = time.monotonic() + timeout

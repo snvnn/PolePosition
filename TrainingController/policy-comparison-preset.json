@@ -1,0 +1,5 @@
+{
+  "task": "정책 비교 평가",
+  "seconds": "7200",
+  "config": "TrainingEnvironment/policy-comparison.json"
+}

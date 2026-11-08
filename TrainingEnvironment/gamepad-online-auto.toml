@@ -1,0 +1,15 @@
+semantics = "gamepad_continuous_iql_v1"
+source_model = "reinforcement_runs/gamepad-outcome-b-release-1793428298259417400-d7511d7d"
+source_policy_sha256 = "3ffbd0ce329b9262f157ebc9b0ceaa30ace4cc1564d38489bd21bced39452d10"
+dataset = "reinforcement_runs/outcome-dataset-1793427949689917000-24577921"
+drive_config = "GamepadIO/outcome-b-autonomous.toml"
+output_dir = "reinforcement_runs"
+# Zero removes the episode count limit; the session wall-clock deadline remains.
+max_episodes = 0
+session_seconds = 7200
+evaluation_start_tolerance_m = 1.0
+
+[automatic_reset]
+enabled = true
+start_first_episode = true
+profile = "input_profiles/gamepad/auto-reset/profile.json"

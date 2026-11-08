@@ -1,0 +1,15 @@
+profile = "input_profiles/gamepad/intervention-profile.json"
+prepared = "state_runs/continuous-seam-prepared-1793424813725418100-6c34e4b4"
+model = "reinforcement_runs/gamepad-outcome-a-release-1793428298142416600-e4c7055f"
+guardian_config = "ModelAndActuator/config.toml"
+controller_config = "BaselineController/config.toml"
+output_dir = "actuator_runs"
+# This model requires the repaired reference above; do not pair with the old path.
+# Continuous driving; no duration limit or steering LPF.
+seconds = 0
+steering_smoothing_ms = 0.0
+disable_path_departure_stop = true
+
+[intervention]
+teacher_slot = 0
+isolation_config = "input_profiles/gamepad/isolation.json"

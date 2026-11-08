@@ -64,7 +64,7 @@ def align(observations, inputs):
     return result
 
 
-def prepare_recording(recording, prepared, speed_file, output, should_stop=lambda:False, *, lap=None, feature_transform="original", include_invalid=False, augmentation=None):
+def prepare_recording(recording, prepared, speed_file, output, should_stop=lambda:False, *, lap=None, feature_transform="original", include_invalid=False, augmentation=None, fast_projection=False):
     from DrivingRecorder.validate_recording import validate
     from TrackModel.model import load_reference
     from .human_imitation import project, projection_breaks
@@ -90,6 +90,9 @@ def prepare_recording(recording, prepared, speed_file, output, should_stop=lambd
     if summary['first_identity']!=heading['identity']: raise ValueError('Car/track mismatch')
     reference=load_reference(pm['track_model_path']); length=reference['manifest']['total_length_m']
     if should_stop(): raise InterruptedError('user_stop')
+    if fast_projection:
+        from .continuous_reference import fast_project
+        project=fast_project
     geom=project(rows, reference['rows'], length, heading, allow_finish_seam=True)
     seam_breaks=projection_breaks(rows,geom,length,allow_finish_seam=True)
     # A seam is a history reset, never a fabricated smooth path or extra travel.
@@ -180,6 +183,18 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
     try:
         if fresh:
             corrections=[];parent_network=None
+            if c.get('successful_rollouts'):
+                from .successful_rollouts import append_successes
+                successes=append_successes(c,training,validation,names,m,inventory)
+                save(out/'successful-examples.json',successes)
+                save(out/'manifest.json',m,replace=True)
+            if c.get('steering_feedback',False):
+                if not c.get('session_teacher_recordings'):raise ValueError('Feedback requires raw teacher sessions')
+                from .steering_feedback import attach_feedback, VARIANT
+                attach_feedback(training);attach_feedback(validation)
+                names=list(names);names[3]='acc_steering_raw'
+                inventory.update(hashes([Path(__file__).with_name('steering_feedback.py')]))
+                m.update(observation_variant=VARIANT,input_sha256=inventory)
             save(out/'training-examples.json',training)
             save(out/'validation-examples.json',validation)
         else:
@@ -209,6 +224,8 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
         raw=np.array([r['features'] for r in training],dtype=np.float32); mean=raw.mean(0);std=raw.std(0);std[std<1e-6]=1
         if c.get('shared_normalization'):
             shared=read(c['shared_normalization']);mean=np.array(shared['mean'],dtype=np.float32);std=np.array(shared['std'],dtype=np.float32)
+            if c.get('steering_feedback',False):
+                mean[3]=raw[:,3].mean();std[3]=max(raw[:,3].std(),1e-6)
         if parent_network is not None:
             mean=np.array(parent_network['mean'],dtype=np.float32);std=np.array(parent_network['std'],dtype=np.float32)
         if mean.shape!=(35,) or std.shape!=(35,) or not np.isfinite(mean).all() or not np.isfinite(std).all() or np.any(std<=0):raise ValueError('Invalid frozen normalization')
@@ -228,7 +245,10 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
             excluded += [13,14,15,16,17,18,23]
         if c.get('exclude_engine_state',False):
             if not fresh:raise ValueError('Engine-state ablation requires fresh training')
-            excluded += [3,22]
+            excluded += [22] if c.get('steering_feedback',False) else [3,22]
+        if c.get('exclude_lateral_response',False):
+            if not fresh:raise ValueError('Lateral-response ablation requires fresh training')
+            excluded += [24,25]
         if excluded:
             x[:,excluded]=0;vx[:,excluded]=0
             m['excluded_input_features']=[names[i] for i in excluded]
@@ -245,6 +265,12 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
         optimizer=torch.optim.Adam(network.parameters(),lr=.0003)
         rng=torch.Generator().manual_seed(42);best=float('inf');best_state=None;history=[];updates=0
         noise_rng=torch.Generator().manual_seed(42)
+        response_rng=torch.Generator().manual_seed(42)
+        if c.get('response_dropout'):
+            from .response_regularization import response_dropout
+            response_dropout(x[:0],response_rng,c['response_dropout'])
+            inventory.update(hashes([Path(__file__).with_name('response_regularization.py')]))
+            m.update(response_dropout=c['response_dropout'],input_sha256=inventory)
         weights=torch.tensor([r.get('weight',1.) for r in training],dtype=torch.double)
         draws=c.get('epoch_samples',len(x))
         initial_sha=__import__('hashlib').sha256(b''.join(v.detach().numpy().tobytes() for v in network.state_dict().values())).hexdigest()
@@ -259,6 +285,8 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
                     from .augmentation import noisy_features
                     batch=(noisy_features(torch.tensor(raw[ids.numpy()]),noise_rng,c['noise'])-torch.tensor(mean))/torch.tensor(std)
                     batch[:,excluded]=0
+                if c.get('response_dropout'):
+                    batch=response_dropout(batch,response_rng,c['response_dropout'])
                 loss=masked_mse(predict(batch),y[ids],masks[ids])
                 if not torch.isfinite(loss): raise ValueError('Nonfinite loss')
                 optimizer.zero_grad();loss.backward();optimizer.step()
@@ -267,7 +295,7 @@ def train(config, should_stop=lambda:False, on_progress=lambda x:None):
             score=sum(errors)/3
             if score<best:
                 best=score;best_epoch=epoch;best_state=copy.deepcopy(network.state_dict())
-                torch.save(dict(semantics=SEMANTICS,model=best_state,optimizer=optimizer.state_dict(),epoch=epoch,torch_rng=torch.get_rng_state(),shuffle_rng=rng.get_state(),noise_rng=noise_rng.get_state(),mean=mean,std=std),out/'best.tmp')
+                torch.save(dict(semantics=SEMANTICS,model=best_state,optimizer=optimizer.state_dict(),epoch=epoch,torch_rng=torch.get_rng_state(),shuffle_rng=rng.get_state(),noise_rng=noise_rng.get_state(),response_rng=response_rng.get_state(),mean=mean,std=std),out/'best.tmp')
                 (out/'best.tmp').replace(out/'checkpoint.pt')
             history.append(dict(epoch=epoch,validation_mse=errors));on_progress(dict(phase='training',epoch=epoch,updates=updates,loss=float(loss.detach()),validation_mse=errors,result_dir=str(out)))
         if should_stop(): raise InterruptedError('user_stop')

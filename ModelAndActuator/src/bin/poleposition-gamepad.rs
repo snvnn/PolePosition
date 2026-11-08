@@ -2,6 +2,15 @@ fn main() {
     #[cfg(windows)]
     {
         let args: Vec<String> = std::env::args().skip(1).collect();
+        if args.len() == 3 && args[0] == "--intervention-bench" {
+            if let Err(e) = poleposition_actuator::gamepad::intervention_bench(
+                std::path::Path::new(&args[1]), std::path::Path::new(&args[2]),
+            ) {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+            return;
+        }
         if args.len() == 3 && args[0] == "--bench" {
             if let Err(e) = poleposition_actuator::gamepad::bench(
                 std::path::Path::new(&args[1]),
@@ -28,7 +37,10 @@ fn main() {
             .windows(2)
             .find(|a| a[0] == "--config")
             .map(|a| a[1].clone());
-        let result = config
+        let result = if let Some(a)=args.windows(2).find(|a|a[0]=="--supervise") {
+            managed.as_ref().ok_or_else(|| "Supervisor needs --managed".into())
+                .and_then(|m|poleposition_actuator::gamepad::supervise(std::path::Path::new(&a[1]),m))
+        } else { config
             .ok_or_else(|| "--config required".into())
             .and_then(|p| {
                 if args.iter().any(|s| s == "--response") {
@@ -39,7 +51,7 @@ fn main() {
                 } else {
                     poleposition_actuator::gamepad::run(std::path::Path::new(&p), managed.as_ref())
                 }
-            });
+            }) };
         match result {
             Ok((path, reason)) => {
                 if let Some(m) = managed {
@@ -50,10 +62,10 @@ fn main() {
                             poleposition_management::outcome(&reason)
                         },
                         &reason,
-                        Some(&path),
+                        path.is_dir().then_some(path.as_path()),
                     );
                 } else {
-                    println!("{}", path.display());
+                    if path.is_dir() { println!("{}", path.display()); }
                 }
             }
             Err(e) => {

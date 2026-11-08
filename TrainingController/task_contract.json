@@ -1,0 +1,2888 @@
+[
+  {
+    "task": "게임패드 교사 기록",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-recorder.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--duration",
+        "60.0",
+        "--gamepad-profile",
+        "<ROOT>\\profile.json",
+        "--gamepad-slot",
+        "0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-recorder.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--duration",
+        "7200.0",
+        "--gamepad-profile",
+        "<ROOT>\\profile.json",
+        "--gamepad-slot",
+        "0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교사 기록",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-train",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-train",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모방학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 모델 시험",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 주행",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-train",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-train",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 교정 학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-probe",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-probe",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 연결 확인",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--response",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--response",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "실제 패드 응답 검사",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--response",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-gamepad.exe",
+        "--managed",
+        "--response",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "가상 패드 응답 검사",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-champion-cycle",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-champion-cycle",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-champion-cycle",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7201.0"
+      ]
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-champion-cycle",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "43200.0"
+      ]
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "최고 모델 학습 반복",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "게임패드 회차 학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-policy-compare",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-policy-compare",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "정책 비교 평가",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online-evaluate",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--model",
+        "<ROOT>\\model"
+      ]
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online-evaluate",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "gamepad-online-evaluate",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0",
+        "--model",
+        "<ROOT>\\model"
+      ]
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "고정 정책 연속주행 평가",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "prepare-v2",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "7200.0",
+        "--task",
+        "prepare-v2",
+        "--config",
+        "<ROOT>\\config.toml"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 자료 준비",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "pretrain-v2",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "pretrain-v2",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\last.pt"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "7200.0",
+        "--task",
+        "pretrain-v2",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "epochs": "1"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "pretrain-v2",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--epochs",
+        "1"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "epochs": "200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "pretrain-v2",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--epochs",
+        "200"
+      ]
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "epochs": "201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "새 학습 epoch 상한은 1~200의 정수 또는 빈칸이어야 합니다."
+    }
+  },
+  {
+    "task": "강화학습 사전학습",
+    "values": {
+      "epochs": "-1"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "새 학습 epoch 상한은 1~200의 정수 또는 빈칸이어야 합니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "v2-shadow",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--managed-seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "v2-shadow",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--managed-seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "새 정책 비교 주행",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify5",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--model",
+        "<ROOT>\\model"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify5",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "7200.0",
+        "--stage",
+        "verify5",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--model",
+        "<ROOT>\\model"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "verify10"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify10",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--model",
+        "<ROOT>\\model",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "verify10"
+    },
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify10",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "verify30"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify30",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--model",
+        "<ROOT>\\model",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "verify30"
+    },
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "verify30",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "train"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "train",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--model",
+        "<ROOT>\\model",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "train"
+    },
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "train",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "evaluate"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "evaluate",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "evaluate"
+    },
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "evaluate",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "evaluate_initial"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "evaluate_initial",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "evaluate_initial"
+    },
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-controller\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--task",
+        "online",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--seconds",
+        "60.0",
+        "--stage",
+        "evaluate_initial",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\checkpoint"
+      ]
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "invalid"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "5초 → 10초 → 30초 검증 후 train을 선택하세요."
+    }
+  },
+  {
+    "task": "강화학습",
+    "values": {
+      "mode": "invalid"
+    },
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "5초 → 10초 → 30초 검증 후 train을 선택하세요."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset"
+      ]
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--resume",
+        "<ROOT>\\last.pt"
+      ]
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "7200.0",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset"
+      ]
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "epochs": "1"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--epochs",
+        "1"
+      ]
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "epochs": "200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--epochs",
+        "200"
+      ]
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "epochs": "201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "새 학습 epoch 상한은 1~200의 정수 또는 빈칸이어야 합니다."
+    }
+  },
+  {
+    "task": "모방학습",
+    "values": {
+      "epochs": "-1"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "새 학습 epoch 상한은 1~200의 정수 또는 빈칸이어야 합니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-recorder.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--duration",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-recorder.exe",
+        "--managed",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--duration",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "기록 수집",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "60.0",
+        "--task",
+        "evaluate",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--model",
+        "<ROOT>\\model",
+        "--split",
+        "test"
+      ]
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\.venv-training\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "TrainingController.worker",
+        "--seconds",
+        "7200.0",
+        "--task",
+        "evaluate",
+        "--dataset",
+        "<ROOT>\\dataset",
+        "--model",
+        "<ROOT>\\model",
+        "--split",
+        "test"
+      ]
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "오프라인 평가",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "policy",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--mode",
+        "shadow",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--model-seconds",
+        "5",
+        "--managed-seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "policy",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--mode",
+        "shadow",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--model-seconds",
+        "5",
+        "--managed-seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "mode": "drive",
+      "model_seconds": "5"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "policy",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--mode",
+        "drive",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--model-seconds",
+        "5",
+        "--managed-seconds",
+        "60.0",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "mode": "drive",
+      "model_seconds": "10"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "policy",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--mode",
+        "drive",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--model-seconds",
+        "10",
+        "--managed-seconds",
+        "60.0",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "mode": "drive",
+      "model_seconds": "15"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "policy",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--model",
+        "<ROOT>\\model",
+        "--mode",
+        "drive",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--model-seconds",
+        "15",
+        "--managed-seconds",
+        "60.0",
+        "--previous-run",
+        "<ROOT>\\previous_run"
+      ]
+    }
+  },
+  {
+    "task": "평가·주행",
+    "values": {
+      "mode": "drive",
+      "model_seconds": "30"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "기존 모델 주행 단계는 5·10·15초입니다."
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {},
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "demo",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--managed-seconds",
+        "60.0"
+      ]
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {},
+    "resume": true,
+    "expected": {
+      "error": "ValueError",
+      "message": "현재 체크포인트 재개는 모방학습에 연결되어 있습니다."
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "0"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "demo",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--managed-seconds",
+        "0.0"
+      ]
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "7200"
+    },
+    "resume": false,
+    "expected": {
+      "argv": [
+        "<ROOT>\\target\\release\\poleposition-actuator.exe",
+        "demo",
+        "--managed",
+        "--prepared",
+        "<ROOT>\\prepared",
+        "--profile",
+        "<ROOT>\\profile.json",
+        "--controller-config",
+        "<ROOT>\\config.toml",
+        "--config",
+        "<ROOT>\\config.toml",
+        "--managed-seconds",
+        "7200.0"
+      ]
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "7201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "43200"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "43201"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  },
+  {
+    "task": "수동 교사 모델 시험",
+    "values": {
+      "seconds": "nan"
+    },
+    "resume": false,
+    "expected": {
+      "error": "ValueError",
+      "message": "시간 제한은 0초 초과 7200초 이하여야 합니다."
+    }
+  }
+]

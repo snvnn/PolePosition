@@ -80,4 +80,21 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(before,{p.name:digest(p) for p in run.iterdir()})
             with self.assertRaisesRegex(ValueError,'separate output'):report(run,output_dir=run)
 
+    def test_pending_report_requires_validation_before_correction_eligibility(self):
+        from .run_report import repair_report
+        for passed in (False,True):
+            with self.subTest(passed=passed),tempfile.TemporaryDirectory() as tmp:
+                run=self.make_run(Path(tmp),[])
+                summary=dict(reason='time_limit',stop_confirmed=True,released=True,error=None,
+                    logging_failure=False,policy_samples=10,passed=False,correction_eligible=False,
+                    comparison_report_created=False,report_status='pending',intervention=True,correction_samples=5)
+                save(run/'summary.json',summary,replace=True)
+                manifest=read(run/'manifest.json');manifest['complete']=True
+                manifest['output_sha256']['summary.json']=digest(run/'summary.json')
+                save(run/'manifest.json',manifest,replace=True)
+                with patch('GamepadIO.run_report.report',return_value=dict(transport=dict(passed=passed),shutdown=dict(passed=True))):
+                    repair_report(run)
+                self.assertEqual(read(run/'summary.json')['correction_eligible'],passed)
+                self.assertEqual(read(run/'summary.json')['report_status'],'completed')
+
 if __name__=='__main__':unittest.main()

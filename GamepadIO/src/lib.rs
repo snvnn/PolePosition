@@ -145,3 +145,5 @@ mod tests {
         assert!(!InputRow::new(2, 1, 7, 8, 0, None).connected);
     }
 }
+
+pub mod steering;

@@ -7,7 +7,7 @@ import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.logger import configure
 from ModelTrainer.common import read, save, hashes, digest, new_folder, finish
-from TrainingController.process import ManagedProcess
+from ExecutionRuntime.process import ManagedProcess
 from .lifecycle import BatchRunner, Limits, EpisodeResult, BatchStopped
 from .checkpoint import save_checkpoint, load_checkpoint
 from .online_policy import bootstrap, export_live, verified_outputs, BoundedActor

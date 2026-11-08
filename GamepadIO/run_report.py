@@ -180,8 +180,8 @@ def repair_report(run):
     import time
     run=Path(run).resolve();m=read(run/'manifest.json');s=read(run/'summary.json')
     verify_hashes(m['output_sha256'],run)
-    if m.get('complete') is not True or not completed_drive(s) or s.get('comparison_report_created') is not False or not s.get('report_error'):
-        raise ValueError('Only a completed drive with a failed report may be repaired')
+    if m.get('complete') is not True or not completed_drive(s) or s.get('comparison_report_created') is not False or not (s.get('report_error') or s.get('report_status')=='pending'):
+        raise ValueError('Only a completed drive with a pending or failed report may be finalized')
     backup=run/f'report-repair-{time.time_ns()}';backup.mkdir()
     for name in ('manifest.json','summary.json','gamepad-comparison.json','gamepad-comparison.png'):
         if (run/name).exists():shutil.copy2(run/name,backup/name)
@@ -190,7 +190,9 @@ def repair_report(run):
     if digest(run/'samples.jsonl')!=original_log_hash:raise ValueError('Run log changed during repair')
     s['passed']=bool(result['transport']['passed'] and result['shutdown']['passed'] and completed_drive(s))
     s['comparison_report_created']=True
-    s['original_report_error']=s.pop('report_error')
+    s['report_status']='completed'
+    s['correction_eligible']=bool(s['passed'] and s.get('intervention') and s.get('correction_samples',0)>0)
+    if 'report_error' in s:s['original_report_error']=s.pop('report_error')
     s['report_repair_evidence']=str(backup)
     save(run/'summary.json',s,replace=True)
     for name in ('summary.json','gamepad-comparison.json','gamepad-comparison.png'):

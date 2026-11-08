@@ -1,0 +1,61 @@
+{
+  "schema": "gamepad_policy_comparison_v1",
+  "training_config": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\TrainingEnvironment\\gamepad-online-auto.toml",
+  "models": {
+    "initial": {
+      "path": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\reinforcement_runs\\gamepad-outcome-b-release-1793428298259417400-d7511d7d",
+      "model_sha256": "3ffbd0ce329b9262f157ebc9b0ceaa30ace4cc1564d38489bd21bced39452d10",
+      "manifest_sha256": "bef071a270f3f81980172e6701d29ca1a2079c3bf8d6f5be7283f68af6323798"
+    },
+    "best": {
+      "path": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\reinforcement_runs\\gamepad-online-session-1793878126400294000-79c7e829\\gamepad-online-checkpoint-1793878600447167400-2b6d1b5a",
+      "model_sha256": "ce05cd9443969a1ea4dd0dff2fe0d8aa754fbe3285af43919b444e385d869a7b",
+      "manifest_sha256": "262983ef636d11a5feb124398c8088036ae708256d2a6beda7c4362f03b6b7d5"
+    },
+    "latest": {
+      "path": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\reinforcement_runs\\gamepad-online-session-1793878126400294000-79c7e829\\gamepad-online-checkpoint-1793880155794000000-1a4d8c7a",
+      "model_sha256": "d553bcfb8a45ff04ee243e3c6a1e600692b65ea402dfbf6e69596beeab3fb86b",
+      "manifest_sha256": "3b5d477a1f9a5ae4135c4f83efd5736396b01749ce6de7f70b6d7b4254dbc1ee"
+    },
+    "control": {
+      "coefficient": 0.0,
+      "path": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\reinforcement_runs\\steering-smoothness-experiment-1793881473100062700-7cce1840\\coefficient-0.0\\gamepad-online-checkpoint-1793881511013485400-cea0ae87",
+      "model_sha256": "6ae14545f6663917d2b74351e322e190cbd0432628ca7a24bba7333d08474f2c",
+      "diagnostic": {
+        "temporal_loss": 0.0018473040545359254,
+        "teacher_mse": [
+          0.015022785402834415,
+          0.011880459263920784,
+          0.01556752435863018
+        ],
+        "pair_count": 13277
+      },
+      "critic_frozen": true,
+      "actor_updates": 1000,
+      "offline_eligible": false
+    },
+    "candidate": {
+      "coefficient": 1.0,
+      "path": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\reinforcement_runs\\steering-smoothness-experiment-1793881473100062700-7cce1840\\coefficient-1.0\\gamepad-online-checkpoint-1793881624654105100-479c1ac2",
+      "model_sha256": "a261221fc250490b43be38c90cda9fda0a610c974efaac0eab929e4341adb1a8",
+      "diagnostic": {
+        "temporal_loss": 0.0004155054921284318,
+        "teacher_mse": [
+          0.015516369603574276,
+          0.011864650063216686,
+          0.015523253940045834
+        ],
+        "pair_count": 13277
+      },
+      "critic_frozen": true,
+      "actor_updates": 1000,
+      "offline_eligible": true
+    }
+  },
+  "seed": 42,
+  "screening_repeats": 4,
+  "confirmation_repeats": 5,
+  "session_seconds": 7200,
+  "trial_seconds": 180,
+  "preset": "C:\\Users\\Yoonhyeon\\Desktop\\accad\\TrainingController\\gamepad-online-auto-preset.json"
+}

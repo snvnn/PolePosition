@@ -1,10 +1,10 @@
 # 폴포지션 (Pole Position)
 
-ACC 텔레메트리 기반 자율 레이싱 프로젝트입니다. **2026-10-18 기준** 기록·데이터 검토·기준 경로·상태 계산, vJoy 저속 경로 추종과 PID 모방학습, GUI, 게임패드 교사 수집·모방학습·사람 교정, 수동 준비 기반 SAC 실행을 구현했습니다.
+ACC 텔레메트리 기반 자율 레이싱 프로젝트입니다. **2026-11-09 기준** Rust 워크스페이스 9개와 Python 데이터 처리·학습·평가·GUI 모듈로 구성됩니다. 게임패드 회차 학습, 자동 복귀, 고정 정책 비교와 최고 모델 학습 반복을 구현했으며, 실행 기반 코드와 작업 정의를 분리했습니다. 구조와 책임 경계는 [아키텍처](Docs/Architecture.md)를 참조하세요.
 
-저속 기준 제어의 한 바퀴와 SAC의 짧은 실제 제어·정차 후 학습·체크포인트 재개를 검증했습니다. 게임패드 자율 완주 성능, 같은 고정 모델의 3랩 평가, 자동 메뉴 초기화와 vJoy 장치 장애 대응은 남아 있습니다. 10월 17일 증강 실험은 후보를 선정하지 않았으며 실게임 비교 시험도 대기 중입니다.
+11월 8일 22시 승인 실행은 종료됐고 기존 최고 모델 `ebd66caa…`를 유지합니다. ACC 실행·실주행·비교·학습 재개에는 새 명시적 승인이 필요합니다. [실행 보류 지침](AGENTS.md)과 [최신 비교·종료 기록](Docs/SteeringSmoothnessComparison.md)을 먼저 확인하세요. 구조 변경의 오프라인 검증과 실게임 검증은 구분합니다. 과거 실험과 날짜별 검증 결과는 기존 문서에 보존합니다.
 
-전체 안내는 [문서 목차](Docs/README.md), 최신 실행 조합은 [게임패드 모델과 설정](Docs/CurrentGamepadModels.md), 남은 개발 과제는 [개발 체크리스트](Docs/DevelopmentChecklist.md)를 참조하세요.
+전체 안내는 [문서 목차](Docs/README.md), 기존 모델·프리셋 대응은 [게임패드 모델과 설정](Docs/CurrentGamepadModels.md), 남은 개발 과제는 [개발 체크리스트](Docs/DevelopmentChecklist.md)를 참조하세요. 최신 정책 선정·실행 상태는 위 비교·종료 기록을 따릅니다.
 
 ## 빌드 및 실행
 
@@ -51,6 +51,15 @@ python DrivingRecorder\validate_recording.py recordings\<세션ID>
 단순 파일 정상 여부만으로 한 바퀴 기록 성공을 선언하지 않습니다.
 
 ## 개발 검증
+
+기본 구조 회귀 검증은 실제 게임·메뉴 어댑터를 차단하고 임시 데이터와 모의 프로세스만 사용합니다.
+
+```powershell
+.\.venv-training\Scripts\python.exe -X utf8 -m Checks
+.\.venv-training\Scripts\python.exe -X utf8 -m Checks --list
+```
+
+단위/모의 프로세스 구분, 로컬 자산·장치 검사와 환경 제약은 [리팩토링 검증 안내](Docs/RefactoringVerification.md)를 참조하세요. `os.link` 권한 오류는 원자적 게시 검증 미완료이며 저장 방식 변경이나 테스트 제외로 통과 처리하지 않습니다.
 
 ```powershell
 cargo test --locked --offline

@@ -7,7 +7,7 @@ from ModelTrainer.common import read,digest,verify_hashes,hashes
 from GamepadIO.run_report import inspect_log,inspect_shutdown
 
 
-def label(policy):
+def label(policy, *, full_toggle=None):
     t=policy.get('teacher');kind=policy.get('authority')
     if not t or kind not in ('human_steer','human_full'):return None
     if not t['connected'] or t['normalization_version']!=1:raise ValueError('Disconnected correction input')
@@ -15,7 +15,8 @@ def label(policy):
         raise ValueError('Correction label precedes observation or follows inference')
     if t['read_end_ns']-policy['observation_ns']>20_000_000:raise ValueError('Correction input too late')
     if not -32768<=t['lx']<=32767 or not 0<=t['rt']<=255 or not 0<=t['lt']<=255:raise ValueError('Invalid raw correction')
-    buttons=t['buttons'];expected='human_full' if buttons&0x200 else 'human_steer' if buttons&0x100 else 'model'
+    buttons=t['buttons'];full=bool(buttons&0x200) if full_toggle is None else full_toggle
+    expected='human_full' if full else 'human_steer' if buttons&0x100 else 'model'
     if buttons&0x20 or expected!=kind:raise ValueError('Correction authority/button mismatch')
     action=[t['lx']/(32768 if t['lx']<0 else 32767),t['rt']/255,t['lt']/255]
     mask=[1,1,1] if kind=='human_full' else [1,0,0]
@@ -24,6 +25,20 @@ def label(policy):
     if x.shape!=(35,) or not np.isfinite(x).all() or policy.get('label_mask')!=mask or not np.allclose(selected,policy['selected_action'],atol=1e-7,rtol=0):
         raise ValueError('Invalid correction feature/mask/selected action')
     return dict(features=x.tolist(),action=action,mask=mask,observation_ns=policy['observation_ns'])
+
+
+def toggle_states(rows):
+    active=False;previous=False;states={}
+    for r in rows:
+        if r['kind']!='human_input':continue
+        buttons=r['input']['buttons'];rb=bool(buttons&0x200)
+        if type(r.get('toggle_enabled')) is not bool:raise ValueError('Missing toggle eligibility')
+        if not r['toggle_enabled'] or buttons&0x20:active=False
+        elif rb and not previous:active=not active
+        previous=rb
+        if r.get('full_toggle') is not active:raise ValueError('Toggle state differs from button edges')
+        states[r['input']['sequence']]=active
+    return states
 
 
 def load_corrections(paths,controls_hash,assists_hash):
@@ -44,6 +59,9 @@ def load_corrections(paths,controls_hash,assists_hash):
         rows=[json.loads(line) for line in (p/'samples.jsonl').read_text().splitlines()]
         transport,_=inspect_log(rows)
         if not transport['passed'] or not inspect_shutdown(rows)['passed']:raise ValueError('Correction transmission/stop validation failed')
+        scheme=m.get('intervention_scheme','hold_v1')
+        if scheme not in ('hold_v1','rb_toggle_v1'):raise ValueError('Unknown intervention scheme')
+        toggles=toggle_states(rows) if scheme=='rb_toggle_v1' else None
         raw=[r['input'] for r in rows if r['kind']=='human_input'];raw_by_seq={r['sequence']:r for r in raw}
         for i,r in enumerate(raw):
             if r['sequence']!=i+1 or not r['connected'] or r['slot']!=m['intervention']['teacher_slot'] or (i and r['read_start_ns']<=raw[i-1]['read_end_ns']):raise ValueError('Correction raw input missing or reversed')
@@ -52,7 +70,11 @@ def load_corrections(paths,controls_hash,assists_hash):
         start_count=len(examples);last_t=-20_000_000
         for r in rows:
             if r['kind']!='policy' or r['mode']!='Running':continue
-            example=label(r)
+            active=None
+            if toggles is not None:
+                active=toggles[r['teacher']['sequence']]
+                if r.get('full_toggle') is not active:raise ValueError('Policy toggle/raw input mismatch')
+            example=label(r,full_toggle=active)
             if example is None:continue
             t=r['observation_ns'];teacher=r['teacher'];o=observed[t]
             if raw_by_seq.get(teacher['sequence'])!=teacher:raise ValueError('Correction raw teacher row changed')

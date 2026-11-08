@@ -95,6 +95,7 @@ pub struct Guard {
     output: Axes,
     stopped_since: Option<u64>,
     last_stop_observation: u64,
+    stop_epoch: Option<u64>,
     stop_sent: bool,
     armed_epoch: Option<u64>,
 }
@@ -117,6 +118,7 @@ impl Guard {
             output: Axes::NEUTRAL,
             stopped_since: None,
             last_stop_observation: 0,
+            stop_epoch: None,
             stop_sent: false,
             armed_epoch: None,
         }
@@ -194,6 +196,11 @@ impl Guard {
         }
     }
     fn stationary(&mut self, now: u64, h: &Health) -> bool {
+        if self.stop_epoch != Some(h.tracking_epoch) {
+            self.stopped_since = None;
+            self.last_stop_observation = 0;
+            self.stop_epoch = Some(h.tracking_epoch);
+        }
         if !h.fresh(now, self.config.age_ns()) || if self.gamepad {h.speed_kmh > self.config.stopped_kmh} else {h.speed_kmh >= self.config.stopped_kmh} {
             self.stopped_since = None;
             return false;
@@ -263,6 +270,7 @@ impl Guard {
                 Some("speed_limit")
             } else if now.saturating_sub(self.armed_ns.unwrap())
                 >= (self.config.test_seconds * 1e9) as u64
+                && !(self.gamepad && self.config.test_seconds == 0.)
                 && !self.config.reinforcement.as_ref().is_some_and(|r| r.unlimited_duration)
             {
                 Some("time_limit")
@@ -357,6 +365,13 @@ mod tests {
         toml::from_str(include_str!("../config.toml")).unwrap()
     }
     #[test]
+    fn gamepad_stop_dwell_restarts_in_new_tracking_epoch() {
+        let mut g=Guard::new_gamepad(cfg());
+        for n in 0..=40 {assert!(!g.stationary(n*10_000_000,&health(n*10_000_000)));}
+        for n in 41..91 {let mut h=health(n*10_000_000);h.tracking_epoch=2;assert!(!g.stationary(n*10_000_000,&h));}
+        let mut h=health(910_000_000);h.tracking_epoch=2;assert!(g.stationary(910_000_000,&h));
+    }
+    #[test]
     fn gamepad_independent_pedals_unscaled_and_emergency_stop() {
         let mut g=Guard::new_gamepad(cfg());
         for t in (0..=60).map(|i|i*10_000_000) {
@@ -374,6 +389,27 @@ mod tests {
         let mut wheel=Guard::new(cfg());wheel.mode=Mode::Stopping;
         wheel.acknowledge(t+2,Axes{steering:0.5,throttle:0.,brake:1.});
         assert!(!wheel.stop_sent);
+    }
+    #[test]
+    fn continuous_gamepad_keeps_emergency_and_expiration_stops() {
+        for stop_case in 0..3 {
+            let mut g = armed();
+            g.gamepad = true;
+            g.config.test_seconds = 0.;
+            let t = 3_600_000_000_000;
+            let h = health(t);
+            g.accept(cmd(t, &h), t, &h).unwrap();
+            assert!(matches!(g.tick(t, &h, Signals::default()), Action::Send(_)));
+            assert_eq!(g.mode, Mode::Running);
+            match stop_case {
+                0 => { g.tick(t + 1, &h, Signals { stop: true, ..Default::default() }); }
+                1 => { g.tick(t + 100_000_000, &h, Signals::default()); }
+                _ => { g.tick(t + 100_000_000, &health(t + 100_000_000), Signals::default()); }
+            }
+            assert_eq!(g.mode, Mode::Stopping);
+            if stop_case == 1 { assert_eq!(g.reason, "telemetry_expired"); }
+            if stop_case == 2 { assert_eq!(g.reason, "command_expired"); }
+        }
     }
     fn health(t: u64) -> Health {
         Health {

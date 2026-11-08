@@ -1,0 +1,11 @@
+semantics = "gamepad_continuous_iql_v1"
+source_model = "reinforcement_runs/gamepad-outcome-b-release-1793428298259417400-d7511d7d"
+source_policy_sha256 = "3ffbd0ce329b9262f157ebc9b0ceaa30ace4cc1564d38489bd21bced39452d10"
+dataset = "reinforcement_runs/outcome-dataset-1793427949689917000-24577921"
+drive_config = "GamepadIO/outcome-b-continuous.toml"
+output_dir = "reinforcement_runs"
+# First integrated episode. Raise to at most 10 after next-policy handoff is checked.
+max_episodes = 1
+session_seconds = 7200
+# Repeatability tolerance, not a track departure or speed restriction.
+evaluation_start_tolerance_m = 1.0

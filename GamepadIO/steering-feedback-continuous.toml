@@ -1,0 +1,15 @@
+profile = "input_profiles/gamepad/intervention-profile.json"
+prepared = "state_runs/first-lap-prepared-1791019376646183400-972dfd54"
+model = "C:/Users/YoonHyeon/Desktop/accad/reinforcement_runs/gamepad-imitation-1793420369488918200-f92a1bba"
+guardian_config = "ModelAndActuator/config.toml"
+controller_config = "BaselineController/config.toml"
+output_dir = "actuator_runs"
+# Continuous whole-session model drive; 0 disables only the gamepad duration limit.
+seconds = 0
+steering_smoothing_ms = 0.0
+# Reference-line distance and heading are recorded, not used as stop thresholds.
+disable_path_departure_stop = true
+
+[intervention]
+teacher_slot = 0
+isolation_config = "input_profiles/gamepad/isolation.json"
